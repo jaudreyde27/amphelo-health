@@ -49,16 +49,30 @@ function WorkflowCard({ w, onApprove, onTrigger }: { w: Workflow; onApprove: (id
               )}
             </div>
             <p className="text-xs text-slate-500 mt-1 line-clamp-1">{w.description}</p>
-            <div className="flex items-center gap-4 mt-2.5">
+            <div className="flex items-center gap-4 mt-2.5 flex-wrap">
               {w.pharmacyName && (
                 <span className="flex items-center gap-1.5 text-xs text-slate-400">
                   <Building2 className="w-3 h-3" />{w.pharmacyName}
+                </span>
+              )}
+              {w.pharmacyPhone ? (
+                <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <Phone className="w-3 h-3" />{w.pharmacyPhone}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-xs text-amber-500 font-medium">
+                  <Phone className="w-3 h-3" />No phone on file
                 </span>
               )}
               <span className="flex items-center gap-1.5 text-xs text-slate-400">
                 <Clock className="w-3 h-3" />{formatScheduledDate(w.scheduledAt)}
               </span>
             </div>
+            {w.notes && (
+              <p className="text-xs text-red-600 mt-2 bg-red-50 border border-red-100 rounded-lg px-3 py-1.5">
+                {w.notes}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex flex-col items-end gap-2.5 shrink-0">
@@ -69,10 +83,10 @@ function WorkflowCard({ w, onApprove, onTrigger }: { w: Workflow; onApprove: (id
               Approve <ArrowRight className="w-3 h-3" />
             </button>
           )}
-          {w.status === 'scheduled' && (
+          {(w.status === 'scheduled' || w.status === 'failed') && (
             <button onClick={() => onTrigger(w.id)}
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-200 transition-colors">
-              <Zap className="w-3 h-3" />Run now
+              <Zap className="w-3 h-3" />{w.status === 'failed' ? 'Retry' : 'Run now'}
             </button>
           )}
         </div>
@@ -138,7 +152,12 @@ export default function DashboardPage() {
   const handleTrigger = async (id: string) => {
     if (!state) return
     const w = state.workflows.find(x => x.id === id)
-    if (!w || !w.pharmacyPhone) return
+    if (!w) return
+    if (!w.pharmacyPhone) {
+      updateWorkflow(id, { status: 'failed', notes: 'No pharmacy phone number on file. Add one in Settings → Pharmacies.' })
+      refresh()
+      return
+    }
     setTriggering(id)
     updateWorkflow(id, { status: 'in_progress' })
     refresh()
