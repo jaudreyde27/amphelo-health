@@ -275,7 +275,7 @@ export default function OnboardingPage() {
   }
 
   const handlePharmacies = () => {
-    const valid = pharmEntries.filter(p => p.nameLocation.trim())
+    const valid = pharmEntries.filter(p => p.pharmName.trim())
     if (valid.length === 0) return
     userSay(valid.map(p => [[p.pharmName, p.pharmCity].filter(Boolean).join(', '), p.phone && `— ${p.phone}`, p.isPrimary && '(primary)', p.hasMailOrder && '+ mail order'].filter(Boolean).join(' ')).join('\n'))
     aiSay(`Almost done — let's capture ${their} insurance information.`, 10)
