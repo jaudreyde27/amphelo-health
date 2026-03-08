@@ -171,7 +171,7 @@ export default function LandingPage() {
               AI-powered care coordination
             </div>
             <h1 className="text-5xl font-extrabold text-slate-900 leading-[1.1] tracking-tight mb-6">
-              Your prescriptions,{' '}
+              Your Type One Diabetes admin,{' '}
               <span className="text-gradient">handled automatically.</span>
             </h1>
             <p className="text-lg text-slate-600 leading-relaxed mb-8 max-w-md">
