@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   CheckCircle2, Clock, AlertCircle, Loader2, Calendar,
-  Pill, Building2, RefreshCw, Zap, ArrowRight, Phone
+  Pill, Building2, RefreshCw, Zap, ArrowRight, Phone,
+  Cpu, User, Shield, HeartHandshake,
 } from 'lucide-react'
 import Navigation from '@/components/Navigation'
 import { getState, updateWorkflow } from '@/lib/storage'
@@ -21,7 +22,6 @@ const STATUS: Record<WorkflowStatus, { label: string; dot: string; text: string;
 
 function Badge({ status }: { status: WorkflowStatus }) {
   const s = STATUS[status]
-  const Icon = s.icon
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${s.text} ${s.bg} ${s.border}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${s.dot} ${status === 'in_progress' ? 'animate-pulse' : ''}`} />
@@ -30,17 +30,14 @@ function Badge({ status }: { status: WorkflowStatus }) {
   )
 }
 
-function WorkflowCard({ w, onApprove, onTrigger }: {
-  w: Workflow
-  onApprove: (id: string) => void
-  onTrigger: (id: string) => void
-}) {
+function WorkflowCard({ w, onApprove, onTrigger }: { w: Workflow; onApprove: (id: string) => void; onTrigger: (id: string) => void }) {
+  const isDevice = w.title?.toLowerCase().startsWith('reorder')
   return (
     <div className="group bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md hover:border-slate-300 transition-all">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4 flex-1 min-w-0">
-          <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
-            <Pill className="w-5 h-5 text-blue-600" />
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isDevice ? 'bg-cyan-50' : 'bg-blue-50'}`}>
+            {isDevice ? <Cpu className="w-5 h-5 text-cyan-600" /> : <Pill className="w-5 h-5 text-blue-600" />}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -64,14 +61,12 @@ function WorkflowCard({ w, onApprove, onTrigger }: {
             </div>
           </div>
         </div>
-
         <div className="flex flex-col items-end gap-2.5 shrink-0">
           <Badge status={w.status} />
           {w.status === 'needs_approval' && (
             <button onClick={() => onApprove(w.id)}
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200">
-              Approve
-              <ArrowRight className="w-3 h-3" />
+              Approve <ArrowRight className="w-3 h-3" />
             </button>
           )}
           {w.status === 'scheduled' && (
@@ -81,6 +76,42 @@ function WorkflowCard({ w, onApprove, onTrigger }: {
             </button>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Care network card
+function CareNode({
+  icon: Icon, title, color, items,
+}: {
+  icon: React.ElementType; title: string; color: string; items: string[]
+}) {
+  if (items.length === 0) return null
+  const colors: Record<string, { bg: string; icon: string; dot: string }> = {
+    blue:   { bg: 'bg-blue-50 border-blue-100',   icon: 'bg-blue-100 text-blue-600',   dot: 'bg-blue-400' },
+    indigo: { bg: 'bg-indigo-50 border-indigo-100', icon: 'bg-indigo-100 text-indigo-600', dot: 'bg-indigo-400' },
+    cyan:   { bg: 'bg-cyan-50 border-cyan-100',   icon: 'bg-cyan-100 text-cyan-600',   dot: 'bg-cyan-400' },
+    teal:   { bg: 'bg-teal-50 border-teal-100',   icon: 'bg-teal-100 text-teal-600',   dot: 'bg-teal-400' },
+    green:  { bg: 'bg-green-50 border-green-100', icon: 'bg-green-100 text-green-600', dot: 'bg-green-400' },
+    purple: { bg: 'bg-purple-50 border-purple-100', icon: 'bg-purple-100 text-purple-600', dot: 'bg-purple-400' },
+  }
+  const c = colors[color] ?? colors.blue
+  return (
+    <div className={`rounded-2xl border p-4 ${c.bg}`}>
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${c.icon}`}>
+          <Icon className="w-3.5 h-3.5" />
+        </div>
+        <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">{title}</span>
+      </div>
+      <div className="space-y-1.5">
+        {items.map((item, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${c.dot}`} />
+            <span className="text-xs text-slate-700 leading-snug">{item}</span>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -121,9 +152,9 @@ export default function DashboardPage() {
           patientName: state.profile?.name,
           patientDOB: state.profile?.dateOfBirth,
           patientPhone: state.profile?.phone,
-          medicationName: med?.name,
-          medicationDosage: med?.dosage,
-          prescriptionNumber: med?.prescriptionNumber,
+          medicationName: med?.name ?? w.medicationName,
+          medicationDosage: med?.dosage ?? '',
+          prescriptionNumber: med?.prescriptionNumber ?? '',
           workflowType: w.type,
         }),
       })
@@ -144,11 +175,13 @@ export default function DashboardPage() {
   )
 
   const { profile, workflows } = state
-  const needs   = workflows.filter(w => w.status === 'needs_approval')
-  const sched   = workflows.filter(w => w.status === 'scheduled')
-  const active  = workflows.filter(w => w.status === 'in_progress')
-  const done    = workflows.filter(w => w.status === 'completed')
-  const failed  = workflows.filter(w => w.status === 'failed')
+  const extended = state as any
+
+  const needs  = workflows.filter(w => w.status === 'needs_approval')
+  const sched  = workflows.filter(w => w.status === 'scheduled')
+  const active = workflows.filter(w => w.status === 'in_progress')
+  const done   = workflows.filter(w => w.status === 'completed')
+  const failed = workflows.filter(w => w.status === 'failed')
 
   const greeting = () => {
     const h = new Date().getHours()
@@ -162,16 +195,36 @@ export default function DashboardPage() {
     { label: 'Completed',      value: done.length,   color: 'text-teal-600',   bg: 'bg-teal-50',   border: 'border-teal-100' },
   ]
 
+  // Build care network data from extended state
+  const prescriberItems: string[] = (extended.prescribers ?? [])
+    .filter((p: any) => p.name?.trim())
+    .map((p: any) => [p.name, p.specialty && `(${p.specialty})`].filter(Boolean).join(' '))
+
+  const medicationItems: string[] = state.medications.map(m => [m.name, m.dosage].filter(Boolean).join(' '))
+
+  const deviceItems: string[] = (extended.devices ?? [])
+    .filter((d: any) => d.devType?.trim())
+    .map((d: any) => [d.brand, d.devType, d.model].filter(Boolean).join(' '))
+
+  const pharmacyItems: string[] = state.pharmacies.map(p => p.name)
+
+  const insuranceItems: string[] = (extended.insurancePlans ?? [])
+    .filter((p: any) => p.planName?.trim())
+    .map((p: any) => [p.planName, `(${p.planType})`, p.coverageType && `· ${p.coverageType}`].filter(Boolean).join(' '))
+
+  const manufacturerItems: string[] = (extended.manufacturers ?? [])
+    .filter((m: any) => m.name?.trim())
+    .map((m: any) => [m.name, m.phone && `— ${m.phone}`].filter(Boolean).join(' '))
+
+  const hasCareNetwork = prescriberItems.length > 0 || medicationItems.length > 0 || deviceItems.length > 0 || pharmacyItems.length > 0 || insuranceItems.length > 0
+
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Navigation patientName={profile?.name} />
-
       <main className="flex-1 overflow-auto">
         {/* Header */}
         <div className="bg-white border-b border-slate-100 px-8 py-7">
-          <h1 className="text-2xl font-bold text-slate-900">
-            {greeting()}, {profile?.name?.split(' ')[0]} 👋
-          </h1>
+          <h1 className="text-2xl font-bold text-slate-900">{greeting()}, {profile?.name?.split(' ')[0]} 👋</h1>
           <p className="text-sm text-slate-400 mt-1">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </p>
@@ -188,6 +241,24 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
+
+          {/* Care Network */}
+          {hasCareNetwork && (
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <HeartHandshake className="w-4 h-4 text-slate-400" />
+                <h2 className="text-base font-bold text-slate-900">Your Care Network</h2>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <CareNode icon={User}      title="Prescribers"          color="blue"   items={prescriberItems} />
+                <CareNode icon={Pill}      title="Medications"          color="indigo" items={medicationItems} />
+                <CareNode icon={Cpu}       title="Devices"              color="cyan"   items={deviceItems} />
+                <CareNode icon={Building2} title="Pharmacies"           color="teal"   items={pharmacyItems} />
+                <CareNode icon={Shield}    title="Insurance"            color="green"  items={insuranceItems} />
+                <CareNode icon={Phone}     title="Manufacturer Support" color="purple" items={manufacturerItems} />
+              </div>
+            </div>
+          )}
 
           {/* Approval banner */}
           {needs.length > 0 && (
@@ -230,9 +301,7 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-base font-bold text-slate-900 mb-4">Failed</h2>
               <div className="space-y-3">
-                {failed.map(w => (
-                  <WorkflowCard key={w.id} w={w} onApprove={handleApprove} onTrigger={handleTrigger} />
-                ))}
+                {failed.map(w => <WorkflowCard key={w.id} w={w} onApprove={handleApprove} onTrigger={handleTrigger} />)}
               </div>
             </div>
           )}
@@ -242,9 +311,7 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-base font-bold text-slate-900 mb-4">Completed</h2>
               <div className="space-y-3">
-                {done.map(w => (
-                  <WorkflowCard key={w.id} w={w} onApprove={handleApprove} onTrigger={handleTrigger} />
-                ))}
+                {done.map(w => <WorkflowCard key={w.id} w={w} onApprove={handleApprove} onTrigger={handleTrigger} />)}
               </div>
             </div>
           )}
