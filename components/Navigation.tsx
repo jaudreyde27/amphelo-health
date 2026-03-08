@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, MessageSquare, Heart, LogOut, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Heart, LogOut, ChevronRight, Settings } from 'lucide-react'
 import { clearState } from '@/lib/storage'
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, desc: 'Workflows & status' },
   { href: '/chat', label: 'Ad Hoc Requests', icon: MessageSquare, desc: 'On-demand calls' },
+  { href: '/settings', label: 'Settings', icon: Settings, desc: 'Update your profile' },
 ]
 
 export default function Navigation({ patientName }: { patientName?: string }) {
