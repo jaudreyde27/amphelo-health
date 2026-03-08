@@ -10,8 +10,8 @@ import type { Medication, Pharmacy, Workflow } from '@/lib/types'
 
 // --- Local types ---
 type SubmittingFor = 'myself' | 'someone_else'
-interface RxEntry { id: string; name: string; format: string; refillFrequency: string }
-interface DeviceEntry { id: string; devType: string; brand: string; model: string }
+interface RxEntry { id: string; name: string; format: string; refillFrequency: string; lastPickedUp: string }
+interface DeviceEntry { id: string; devType: string; brand: string; model: string; isPrescription: boolean; qty: string; pickupFrequency: string; lastPickedUp: string }
 interface ManufacturerEntry { id: string; name: string; phone: string }
 interface PrescriberEntry {
   id: string; name: string; specialty: string; practice: string; phone: string; manages: string[]
@@ -27,6 +27,21 @@ interface PriorAuth { id: string; item: string; expDate: string }
 interface ChatMsg { id: string; role: 'ai' | 'user'; content: string }
 
 function uid() { return Math.random().toString(36).slice(2) + Date.now().toString(36) }
+
+function parseFrequencyToDays(freq: string): number {
+  if (!freq) return 30
+  const f = freq.toLowerCase()
+  const m = f.match(/(\d+)\s*(day|week|month)/)
+  if (m) {
+    const n = parseInt(m[1])
+    if (m[2].startsWith('d')) return n
+    if (m[2].startsWith('w')) return n * 7
+    if (m[2].startsWith('m')) return n * 30
+  }
+  if (f.includes('month')) return 30
+  if (f.includes('week')) return 7
+  return 30
+}
 
 const CONDITIONS = [
   'Type 1 Diabetes', 'Type 2 Diabetes', 'Multiple Sclerosis', "Crohn's Disease",
@@ -155,9 +170,9 @@ export default function OnboardingPage() {
   const [submittingFor, setSubmittingFor] = useState<SubmittingFor>('myself')
   const [patientName, setPatientName] = useState('')
   const [condition, setCondition] = useState('')
-  const [rxEntries, setRxEntries] = useState<RxEntry[]>([{ id: uid(), name: '', format: '', refillFrequency: '' }])
+  const [rxEntries, setRxEntries] = useState<RxEntry[]>([{ id: uid(), name: '', format: '', refillFrequency: '', lastPickedUp: '' }])
   const [hasDevices, setHasDevices] = useState<boolean | null>(null)
-  const [deviceEntries, setDeviceEntries] = useState<DeviceEntry[]>([{ id: uid(), devType: '', brand: '', model: '' }])
+  const [deviceEntries, setDeviceEntries] = useState<DeviceEntry[]>([{ id: uid(), devType: '', brand: '', model: '', isPrescription: false, qty: '', pickupFrequency: '', lastPickedUp: '' }])
   const [hasManufacturers, setHasManufacturers] = useState<boolean | null>(null)
   const [manufacturerEntries, setManufacturerEntries] = useState<ManufacturerEntry[]>([{ id: uid(), name: '', phone: '' }])
   const [prescriberEntries, setPrescriberEntries] = useState<PrescriberEntry[]>([{
@@ -229,7 +244,7 @@ export default function OnboardingPage() {
   const handleRx = () => {
     const valid = rxEntries.filter(r => r.name.trim())
     if (valid.length === 0) return
-    userSay(valid.map(r => [r.name, r.format, r.refillFrequency].filter(Boolean).join(' · ')).join('\n'))
+    userSay(valid.map(r => [r.name, r.format, r.refillFrequency, r.lastPickedUp && `last filled ${r.lastPickedUp}`].filter(Boolean).join(' · ')).join('\n'))
     aiSay(`Got it! Does ${their} care involve any medical devices? (e.g. CGM, insulin pump, infusion pump)`, 4)
   }
 
@@ -246,7 +261,7 @@ export default function OnboardingPage() {
   const handleDevices = () => {
     const valid = deviceEntries.filter(d => d.devType.trim())
     if (valid.length === 0) return
-    userSay(valid.map(d => [d.brand, d.devType, d.model].filter(Boolean).join(' ')).join('\n'))
+    userSay(valid.map(d => [[d.brand, d.devType, d.model].filter(Boolean).join(' '), d.isPrescription && `(Rx: ${[d.qty, d.pickupFrequency, d.lastPickedUp && `last ${d.lastPickedUp}`].filter(Boolean).join(', ')})`].filter(Boolean).join(' ')).join('\n'))
     aiSay(`Got it. Do you ever contact ${their} medication or device manufacturer directly for support or reorders? (e.g. Dexcom, Omnipod, Lilly)`, 6)
   }
 
@@ -327,21 +342,40 @@ export default function OnboardingPage() {
       return (entryIdx >= 0 ? pharmaciesWithIds[entryIdx] : undefined) ?? primaryPharmacy
     }
 
+    const today = new Date().toISOString().split('T')[0]
+
     const medicationsWithIds: Medication[] = rxEntries.filter(r => r.name.trim()).map(r => {
       const pharm = pharmForItem(r.name)
+      const daysSupply = parseFrequencyToDays(r.refillFrequency)
       return {
         id: makeId(), name: r.name, dosage: r.format, frequency: r.refillFrequency,
         prescriptionNumber: '', refillsRemaining: 3,
-        lastFilled: new Date().toISOString().split('T')[0],
-        daysSupply: 30, pharmacyId: pharm?.id ?? '',
+        lastFilled: r.lastPickedUp || today,
+        daysSupply, pharmacyId: pharm?.id ?? '',
       }
     })
 
-    const medWorkflows = generateWorkflowsFromOnboarding(medicationsWithIds, pharmaciesWithIds, 7)
+    // Prescription-supply devices (pump cartridges, sensors, etc.) → tracked as medications
+    const prescriptionDeviceMeds: Medication[] = hasDevices
+      ? deviceEntries.filter(d => d.devType.trim() && d.isPrescription).map(d => {
+          const itemName = `${d.brand} ${d.devType}`.trim()
+          const pharm = pharmForItem(itemName)
+          const daysSupply = parseFrequencyToDays(d.pickupFrequency)
+          return {
+            id: makeId(), name: itemName, dosage: d.qty || '', frequency: d.pickupFrequency,
+            prescriptionNumber: '', refillsRemaining: 3,
+            lastFilled: d.lastPickedUp || today,
+            daysSupply, pharmacyId: pharm?.id ?? '',
+          }
+        })
+      : []
 
-    // Device workflows — devices are pharmacy pickups too
+    const allMedications = [...medicationsWithIds, ...prescriptionDeviceMeds]
+    const medWorkflows = generateWorkflowsFromOnboarding(allMedications, pharmaciesWithIds, 7)
+
+    // Non-prescription devices → simple reorder workflows
     const deviceWorkflows: Workflow[] = hasDevices
-      ? deviceEntries.filter(d => d.devType.trim()).map(d => {
+      ? deviceEntries.filter(d => d.devType.trim() && !d.isPrescription).map(d => {
           const itemName = `${d.brand} ${d.devType}`.trim()
           const pharm = pharmForItem(itemName)
           return {
@@ -361,7 +395,7 @@ export default function OnboardingPage() {
 
     setState({
       profile: { id: makeId(), name: patientName, dateOfBirth: '', phone: '', email: '', createdAt: new Date().toISOString() },
-      medications: medicationsWithIds,
+      medications: allMedications,
       pharmacies: pharmaciesWithIds,
       workflows: [...medWorkflows, ...deviceWorkflows],
       messages: [],
@@ -475,19 +509,21 @@ export default function OnboardingPage() {
                     <button onClick={() => setRxEntries(es => es.filter(e => e.id !== rx.id))} className="text-slate-300 hover:text-red-400 transition"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 )}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <Field label="Medication name" placeholder="Humalog" value={rx.name}
                     onChange={e => setRxEntries(es => es.map(r => r.id === rx.id ? { ...r, name: e.target.value } : r))} />
                   <Field label="Format" placeholder="10mL vial" value={rx.format}
                     onChange={e => setRxEntries(es => es.map(r => r.id === rx.id ? { ...r, format: e.target.value } : r))} />
                   <Field label="Refill frequency" placeholder="every 4 weeks" value={rx.refillFrequency}
                     onChange={e => setRxEntries(es => es.map(r => r.id === rx.id ? { ...r, refillFrequency: e.target.value } : r))} />
+                  <Field label="Date last picked up / received" type="date" value={rx.lastPickedUp}
+                    onChange={e => setRxEntries(es => es.map(r => r.id === rx.id ? { ...r, lastPickedUp: e.target.value } : r))} />
                 </div>
                 {i < rxEntries.length - 1 && <div className="border-t border-slate-100 pt-1" />}
               </div>
             ))}
             <SendRow onSend={handleRx} disabled={!rxEntries.some(r => r.name.trim())}
-              onAdd={() => setRxEntries(es => [...es, { id: uid(), name: '', format: '', refillFrequency: '' }])}
+              onAdd={() => setRxEntries(es => [...es, { id: uid(), name: '', format: '', refillFrequency: '', lastPickedUp: '' }])}
               addLabel="Add another prescription" />
           </FormCard>
         )}
@@ -519,11 +555,35 @@ export default function OnboardingPage() {
                   <Field label="Model" placeholder="G7" value={d.model}
                     onChange={e => setDeviceEntries(es => es.map(x => x.id === d.id ? { ...x, model: e.target.value } : x))} />
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Also a prescription supply? <span className="font-normal text-slate-400">(pump cartridges, sensors, infusion sets, etc.)</span></label>
+                  <div className="flex gap-2">
+                    {[true, false].map(v => (
+                      <button key={String(v)} onClick={() => setDeviceEntries(es => es.map(x => x.id === d.id ? { ...x, isPrescription: v } : x))}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition
+                          ${d.isPrescription === v ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'}`}>
+                        {v ? 'Yes' : 'No'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {d.isPrescription && (
+                  <div className="ml-3 pl-3 border-l-2 border-blue-100 space-y-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <Field label="Quantity per order" placeholder="3-month supply" value={d.qty}
+                        onChange={e => setDeviceEntries(es => es.map(x => x.id === d.id ? { ...x, qty: e.target.value } : x))} />
+                      <Field label="Pickup frequency" placeholder="every 3 months" value={d.pickupFrequency}
+                        onChange={e => setDeviceEntries(es => es.map(x => x.id === d.id ? { ...x, pickupFrequency: e.target.value } : x))} />
+                      <Field label="Date last received" type="date" value={d.lastPickedUp}
+                        onChange={e => setDeviceEntries(es => es.map(x => x.id === d.id ? { ...x, lastPickedUp: e.target.value } : x))} />
+                    </div>
+                  </div>
+                )}
                 {i < deviceEntries.length - 1 && <div className="border-t border-slate-100 pt-1" />}
               </div>
             ))}
             <SendRow onSend={handleDevices} disabled={!deviceEntries.some(d => d.devType.trim())}
-              onAdd={() => setDeviceEntries(es => [...es, { id: uid(), devType: '', brand: '', model: '' }])}
+              onAdd={() => setDeviceEntries(es => [...es, { id: uid(), devType: '', brand: '', model: '', isPrescription: false, qty: '', pickupFrequency: '', lastPickedUp: '' }])}
               addLabel="Add another device" />
           </FormCard>
         )}
@@ -814,8 +874,8 @@ export default function OnboardingPage() {
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
               {[
                 { label: 'Patient', items: [`${patientName} — ${condition}`, ...(submittingFor === 'someone_else' ? ['Submitted by caregiver'] : [])] },
-                { label: 'Prescriptions', items: rxEntries.filter(r => r.name.trim()).map(r => [r.name, r.format && `(${r.format})`, r.refillFrequency && `· ${r.refillFrequency}`].filter(Boolean).join(' ')) },
-                ...(hasDevices && deviceEntries.some(d => d.devType.trim()) ? [{ label: 'Devices', items: deviceEntries.filter(d => d.devType.trim()).map(d => [d.brand, d.devType, d.model].filter(Boolean).join(' ')) }] : []),
+                { label: 'Prescriptions', items: rxEntries.filter(r => r.name.trim()).map(r => [r.name, r.format && `(${r.format})`, r.refillFrequency && `· ${r.refillFrequency}`, r.lastPickedUp && `· last filled ${r.lastPickedUp}`].filter(Boolean).join(' ')) },
+                ...(hasDevices && deviceEntries.some(d => d.devType.trim()) ? [{ label: 'Devices', items: deviceEntries.filter(d => d.devType.trim()).map(d => [[d.brand, d.devType, d.model].filter(Boolean).join(' '), d.isPrescription && `(Rx: ${[d.qty, d.pickupFrequency, d.lastPickedUp && `last ${d.lastPickedUp}`].filter(Boolean).join(', ')})`].filter(Boolean).join(' ')) }] : []),
                 ...(hasManufacturers && manufacturerEntries.some(m => m.name.trim()) ? [{ label: 'Manufacturer Support', items: manufacturerEntries.filter(m => m.name.trim()).map(m => [m.name, m.phone && `— ${m.phone}`].filter(Boolean).join(' ')) }] : []),
                 { label: 'Prescribers', items: prescriberEntries.filter(p => p.name.trim()).map(p => [p.name, p.specialty && `(${p.specialty})`, p.practice && `· ${p.practice}`].filter(Boolean).join(' ')) },
                 { label: 'Pharmacies', items: pharmEntries.filter(p => p.pharmName.trim()).map(p => [[p.pharmName, [p.pharmAddress, p.pharmCity].filter(Boolean).join(', ')].filter(Boolean).join(' — '), p.isPrimary && '(primary)', p.hasMailOrder && '+ mail order'].filter(Boolean).join(' ')) },
