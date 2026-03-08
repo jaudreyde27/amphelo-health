@@ -18,7 +18,7 @@ interface PrescriberEntry {
   visitFrequency: string; lastVisit: string; nextVisitScheduled: boolean; nextVisitDate: string
 }
 interface PharmEntry {
-  id: string; nameLocation: string; phone: string; isPrimary: boolean
+  id: string; pharmName: string; pharmAddress: string; pharmCity: string; phone: string; isPrimary: boolean
   fills: string[]
   hasMailOrder: boolean; mailName: string; mailPhone: string; mailMeds: string[]
 }
@@ -165,7 +165,7 @@ export default function OnboardingPage() {
     visitFrequency: '', lastVisit: '', nextVisitScheduled: false, nextVisitDate: '',
   }])
   const [pharmEntries, setPharmEntries] = useState<PharmEntry[]>([{
-    id: uid(), nameLocation: '', phone: '', isPrimary: true,
+    id: uid(), pharmName: '', pharmAddress: '', pharmCity: '', phone: '', isPrimary: true,
     fills: [],
     hasMailOrder: false, mailName: '', mailPhone: '', mailMeds: [],
   }])
@@ -277,7 +277,7 @@ export default function OnboardingPage() {
   const handlePharmacies = () => {
     const valid = pharmEntries.filter(p => p.nameLocation.trim())
     if (valid.length === 0) return
-    userSay(valid.map(p => [p.nameLocation, p.phone && `— ${p.phone}`, p.isPrimary && '(primary)', p.hasMailOrder && '+ mail order'].filter(Boolean).join(' ')).join('\n'))
+    userSay(valid.map(p => [[p.pharmName, p.pharmCity].filter(Boolean).join(', '), p.phone && `— ${p.phone}`, p.isPrimary && '(primary)', p.hasMailOrder && '+ mail order'].filter(Boolean).join(' ')).join('\n'))
     aiSay(`Almost done — let's capture ${their} insurance information.`, 10)
   }
 
@@ -316,8 +316,8 @@ export default function OnboardingPage() {
     const makeId = () => uid()
 
     const pharmaciesWithIds: Pharmacy[] = pharmEntries
-      .filter(p => p.nameLocation.trim())
-      .map(p => ({ id: makeId(), name: p.nameLocation, phone: p.phone, address: '' }))
+      .filter(p => p.pharmName.trim())
+      .map(p => ({ id: makeId(), name: p.pharmName, phone: p.phone, address: [p.pharmAddress, p.pharmCity].filter(Boolean).join(', ') }))
 
     const primaryPharmacy = pharmaciesWithIds[0]
 
@@ -574,7 +574,7 @@ export default function OnboardingPage() {
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Doctor name" placeholder="Dr. Smith" value={p.name}
+                  <Field label="Full name" placeholder="Dr. Sarah Smith" value={p.name}
                     onChange={e => setPrescriberEntries(es => es.map(x => x.id === p.id ? { ...x, name: e.target.value } : x))} />
                   <Field label="Specialty" placeholder="Endocrinology" value={p.specialty}
                     onChange={e => setPrescriberEntries(es => es.map(x => x.id === p.id ? { ...x, specialty: e.target.value } : x))} />
@@ -636,10 +636,14 @@ export default function OnboardingPage() {
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Pharmacy name & location" placeholder="CVS – 94105" value={ph.nameLocation}
-                    onChange={e => setPharmEntries(es => es.map(x => x.id === ph.id ? { ...x, nameLocation: e.target.value } : x))} />
+                  <Field label="Pharmacy name" placeholder="CVS" value={ph.pharmName}
+                    onChange={e => setPharmEntries(es => es.map(x => x.id === ph.id ? { ...x, pharmName: e.target.value } : x))} />
                   <Field label="Phone number" type="tel" placeholder="555-123-4567" value={ph.phone}
                     onChange={e => setPharmEntries(es => es.map(x => x.id === ph.id ? { ...x, phone: e.target.value } : x))} />
+                  <Field label="Street address" placeholder="100 Main St" value={ph.pharmAddress}
+                    onChange={e => setPharmEntries(es => es.map(x => x.id === ph.id ? { ...x, pharmAddress: e.target.value } : x))} />
+                  <Field label="City" placeholder="New York" value={ph.pharmCity}
+                    onChange={e => setPharmEntries(es => es.map(x => x.id === ph.id ? { ...x, pharmCity: e.target.value } : x))} />
                 </div>
                 <div className="flex gap-4 flex-wrap">
                   <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
@@ -684,8 +688,8 @@ export default function OnboardingPage() {
                 {i < pharmEntries.length - 1 && <div className="border-t border-slate-100 pt-1" />}
               </div>
             ))}
-            <SendRow onSend={handlePharmacies} disabled={!pharmEntries.some(p => p.nameLocation.trim())}
-              onAdd={() => setPharmEntries(es => [...es, { id: uid(), nameLocation: '', phone: '', isPrimary: false, fills: [], hasMailOrder: false, mailName: '', mailPhone: '', mailMeds: [] }])}
+            <SendRow onSend={handlePharmacies} disabled={!pharmEntries.some(p => p.pharmName.trim())}
+              onAdd={() => setPharmEntries(es => [...es, { id: uid(), pharmName: '', pharmAddress: '', pharmCity: '', phone: '', isPrimary: false, fills: [], hasMailOrder: false, mailName: '', mailPhone: '', mailMeds: [] }])}
               addLabel="Add another pharmacy" />
           </FormCard>
         )}
@@ -814,7 +818,7 @@ export default function OnboardingPage() {
                 ...(hasDevices && deviceEntries.some(d => d.devType.trim()) ? [{ label: 'Devices', items: deviceEntries.filter(d => d.devType.trim()).map(d => [d.brand, d.devType, d.model].filter(Boolean).join(' ')) }] : []),
                 ...(hasManufacturers && manufacturerEntries.some(m => m.name.trim()) ? [{ label: 'Manufacturer Support', items: manufacturerEntries.filter(m => m.name.trim()).map(m => [m.name, m.phone && `— ${m.phone}`].filter(Boolean).join(' ')) }] : []),
                 { label: 'Prescribers', items: prescriberEntries.filter(p => p.name.trim()).map(p => [p.name, p.specialty && `(${p.specialty})`, p.practice && `· ${p.practice}`].filter(Boolean).join(' ')) },
-                { label: 'Pharmacies', items: pharmEntries.filter(p => p.nameLocation.trim()).map(p => [p.nameLocation, p.isPrimary && '(primary)', p.hasMailOrder && '+ mail order'].filter(Boolean).join(' ')) },
+                { label: 'Pharmacies', items: pharmEntries.filter(p => p.pharmName.trim()).map(p => [[p.pharmName, [p.pharmAddress, p.pharmCity].filter(Boolean).join(', ')].filter(Boolean).join(' — '), p.isPrimary && '(primary)', p.hasMailOrder && '+ mail order'].filter(Boolean).join(' ')) },
                 { label: 'Insurance', items: insurPlans.filter(p => p.planName.trim()).map(p => [p.planName, `(${p.planType})`, p.memberId && `· ID: ${p.memberId}`, `· ${p.coverageType}`].filter(Boolean).join(' ')) },
                 ...(paStatus === 'yes' && priorAuths.some(p => p.item.trim()) ? [{ label: 'Prior Authorizations', items: priorAuths.filter(p => p.item.trim()).map(p => [p.item, p.expDate && `(exp. ${p.expDate})`].filter(Boolean).join(' ')) }] : []),
                 ...(coverageNotes.trim() ? [{ label: 'Coverage Notes', items: [coverageNotes.trim()] }] : []),
