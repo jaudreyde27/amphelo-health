@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   CheckCircle2, Clock, AlertCircle, Loader2, Calendar,
@@ -13,11 +13,11 @@ import { formatScheduledDate } from '@/lib/workflows'
 import type { AppState, Workflow, WorkflowStatus } from '@/lib/types'
 
 const STATUS: Record<WorkflowStatus, { label: string; dot: string; text: string; bg: string; border: string; icon: React.ElementType }> = {
-  needs_approval: { label: 'Needs Approval', dot: 'bg-amber-400',  text: 'text-amber-700',  bg: 'bg-amber-50',   border: 'border-amber-200',  icon: AlertCircle },
-  scheduled:      { label: 'Scheduled',      dot: 'bg-blue-400',   text: 'text-blue-700',   bg: 'bg-blue-50',    border: 'border-blue-200',   icon: Calendar },
-  in_progress:    { label: 'In Progress',    dot: 'bg-violet-400', text: 'text-violet-700', bg: 'bg-violet-50',  border: 'border-violet-200', icon: Loader2 },
-  completed:      { label: 'Completed',      dot: 'bg-teal-400',   text: 'text-teal-700',   bg: 'bg-teal-50',    border: 'border-teal-200',   icon: CheckCircle2 },
-  failed:         { label: 'Failed — Action Needed', dot: 'bg-red-400', text: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', icon: AlertCircle },
+  needs_approval: { label: 'Needs Approval',        dot: 'bg-amber-400',  text: 'text-amber-700',  bg: 'bg-amber-50',   border: 'border-amber-200',  icon: AlertCircle },
+  scheduled:      { label: 'Scheduled',              dot: 'bg-blue-400',   text: 'text-blue-700',   bg: 'bg-blue-50',    border: 'border-blue-200',   icon: Calendar },
+  in_progress:    { label: 'In Progress',            dot: 'bg-violet-400', text: 'text-violet-700', bg: 'bg-violet-50',  border: 'border-violet-200', icon: Loader2 },
+  completed:      { label: 'Completed',              dot: 'bg-teal-400',   text: 'text-teal-700',   bg: 'bg-teal-50',    border: 'border-teal-200',   icon: CheckCircle2 },
+  failed:         { label: 'Action Needed',          dot: 'bg-red-400',    text: 'text-red-700',    bg: 'bg-red-50',     border: 'border-red-200',    icon: AlertCircle },
 }
 
 function Badge({ status }: { status: WorkflowStatus }) {
@@ -30,9 +30,16 @@ function Badge({ status }: { status: WorkflowStatus }) {
   )
 }
 
+// A workflow is only truly "in progress" if a call was actually placed (has a callId)
+function displayStatus(w: Workflow): WorkflowStatus {
+  if (w.status === 'in_progress' && !w.callId) return 'scheduled'
+  return w.status
+}
+
 function WorkflowCard({ w, onApprove, onTrigger }: { w: Workflow; onApprove: (id: string) => void; onTrigger: (id: string) => void }) {
   const isDevice = w.title?.toLowerCase().startsWith('reorder')
   const isSpecialist = w.type === 'custom' && w.title?.toLowerCase().startsWith('check in')
+  const status = displayStatus(w)
   return (
     <div className="group bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md hover:border-slate-300 transition-all">
       <div className="flex items-start justify-between gap-4">
@@ -81,17 +88,17 @@ function WorkflowCard({ w, onApprove, onTrigger }: { w: Workflow; onApprove: (id
           </div>
         </div>
         <div className="flex flex-col items-end gap-2.5 shrink-0">
-          <Badge status={w.status} />
-          {w.status === 'needs_approval' && (
+          <Badge status={status} />
+          {status === 'needs_approval' && (
             <button onClick={() => onApprove(w.id)}
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200">
               Approve <ArrowRight className="w-3 h-3" />
             </button>
           )}
-          {(w.status === 'scheduled' || w.status === 'failed') && (
+          {(status === 'scheduled' || status === 'failed') && (
             <button onClick={() => onTrigger(w.id)}
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-200 transition-colors">
-              <Zap className="w-3 h-3" />{w.status === 'failed' ? 'Retry' : 'Run now'}
+              <Zap className="w-3 h-3" />{status === 'failed' ? 'Retry' : 'Run now'}
             </button>
           )}
         </div>
@@ -108,11 +115,11 @@ function CareNode({
 }) {
   if (items.length === 0) return null
   const colors: Record<string, { bg: string; icon: string; dot: string }> = {
-    blue:   { bg: 'bg-blue-50 border-blue-100',   icon: 'bg-blue-100 text-blue-600',   dot: 'bg-blue-400' },
+    blue:   { bg: 'bg-blue-50 border-blue-100',     icon: 'bg-blue-100 text-blue-600',     dot: 'bg-blue-400' },
     indigo: { bg: 'bg-indigo-50 border-indigo-100', icon: 'bg-indigo-100 text-indigo-600', dot: 'bg-indigo-400' },
-    cyan:   { bg: 'bg-cyan-50 border-cyan-100',   icon: 'bg-cyan-100 text-cyan-600',   dot: 'bg-cyan-400' },
-    teal:   { bg: 'bg-teal-50 border-teal-100',   icon: 'bg-teal-100 text-teal-600',   dot: 'bg-teal-400' },
-    green:  { bg: 'bg-green-50 border-green-100', icon: 'bg-green-100 text-green-600', dot: 'bg-green-400' },
+    cyan:   { bg: 'bg-cyan-50 border-cyan-100',     icon: 'bg-cyan-100 text-cyan-600',     dot: 'bg-cyan-400' },
+    teal:   { bg: 'bg-teal-50 border-teal-100',     icon: 'bg-teal-100 text-teal-600',     dot: 'bg-teal-400' },
+    green:  { bg: 'bg-green-50 border-green-100',   icon: 'bg-green-100 text-green-600',   dot: 'bg-green-400' },
     purple: { bg: 'bg-purple-50 border-purple-100', icon: 'bg-purple-100 text-purple-600', dot: 'bg-purple-400' },
   }
   const c = colors[color] ?? colors.blue
@@ -136,20 +143,14 @@ function CareNode({
   )
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter()
   const [state, setStateLocal] = useState<AppState | null>(null)
   const [triggering, setTriggering] = useState<string | null>(null)
   const [transcripts, setTranscripts] = useState<Record<string, { transcript: string | null; summary: string | null; endedAt: string | null; duration: number | null }>>({})
   const [expandedTranscript, setExpandedTranscript] = useState<string | null>(null)
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState<'overview' | 'history'>(
-    searchParams.get('tab') === 'history' ? 'history' : 'overview'
-  )
-
-  useEffect(() => {
-    setActiveTab(searchParams.get('tab') === 'history' ? 'history' : 'overview')
-  }, [searchParams])
+  const activeTab = searchParams.get('tab') ?? 'overview'
 
   useEffect(() => {
     const s = getState()
@@ -238,25 +239,25 @@ export default function DashboardPage() {
   const { profile, workflows } = state
   const extended = state as any
 
-  const needs  = workflows.filter(w => w.status === 'needs_approval')
-  const sched  = workflows.filter(w => w.status === 'scheduled')
-  const active = workflows.filter(w => w.status === 'in_progress')
-  const done   = workflows.filter(w => w.status === 'completed')
-  const failed = workflows.filter(w => w.status === 'failed')
+  const needs   = workflows.filter(w => w.status === 'needs_approval')
+  const sched   = workflows.filter(w => w.status === 'scheduled' || (w.status === 'in_progress' && !w.callId))
+  const active  = workflows.filter(w => w.status === 'in_progress' && w.callId)
+  const done    = workflows.filter(w => w.status === 'completed')
+  const failed  = workflows.filter(w => w.status === 'failed')
 
   const greeting = () => {
     const h = new Date().getHours()
     return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
   }
 
+  // Stats: Needs Approval | Scheduled | Action Needed | Completed
   const STATS = [
     { label: 'Needs Approval', value: needs.length,  color: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-100' },
     { label: 'Scheduled',      value: sched.length,  color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-100' },
-    { label: 'In Progress',    value: active.length, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-100' },
+    { label: 'Action Needed',  value: failed.length, color: 'text-red-600',    bg: 'bg-red-50',    border: 'border-red-100' },
     { label: 'Completed',      value: done.length,   color: 'text-teal-600',   bg: 'bg-teal-50',   border: 'border-teal-100' },
   ]
 
-  // Build care network data from extended state
   const normalizeSpecialtyDisplay = (s: string): string => {
     if (!s?.trim()) return s
     const map: [RegExp, string][] = [
@@ -323,7 +324,9 @@ export default function DashboardPage() {
 
         <div className="px-8 py-7 space-y-7 max-w-5xl">
 
+          {/* ── OVERVIEW TAB ── */}
           {activeTab === 'overview' && <>
+
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {STATS.map(s => (
@@ -373,9 +376,23 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Active workflows */}
-          {[...active, ...needs, ...sched].length > 0 && (() => {
-            const all = [...active, ...needs, ...sched]
+          {/* In Progress (live calls only) */}
+          {active.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Loader2 className="w-3.5 h-3.5 text-violet-400 animate-spin" />
+                <h2 className="text-base font-bold text-slate-900">In Progress</h2>
+                <span className="text-xs text-slate-400 ml-auto">{active.length} active call{active.length !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="space-y-3">
+                {active.map(w => <WorkflowCard key={w.id} w={w} onApprove={handleApprove} onTrigger={handleTrigger} />)}
+              </div>
+            </div>
+          )}
+
+          {/* Scheduled Workflows + Ad Hoc */}
+          {[...needs, ...sched].length > 0 && (() => {
+            const all = [...needs, ...sched]
             const recurring = all.filter(w => w.isRecurring)
             const adhoc = all.filter(w => !w.isRecurring)
             return (
@@ -408,22 +425,16 @@ export default function DashboardPage() {
             )
           })()}
 
-          {/* Failed */}
+          {/* Action Needed (failed) */}
           {failed.length > 0 && (
             <div>
-              <h2 className="text-base font-bold text-slate-900 mb-4">Failed</h2>
+              <div className="flex items-center gap-2 mb-3">
+                <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                <h2 className="text-base font-bold text-slate-900">Action Needed</h2>
+                <span className="text-xs text-slate-400 ml-auto">{failed.length} total</span>
+              </div>
               <div className="space-y-3">
                 {failed.map(w => <WorkflowCard key={w.id} w={w} onApprove={handleApprove} onTrigger={handleTrigger} />)}
-              </div>
-            </div>
-          )}
-
-          {/* Completed */}
-          {done.length > 0 && (
-            <div>
-              <h2 className="text-base font-bold text-slate-900 mb-4">Completed</h2>
-              <div className="space-y-3">
-                {done.map(w => <WorkflowCard key={w.id} w={w} onApprove={handleApprove} onTrigger={handleTrigger} />)}
               </div>
             </div>
           )}
@@ -440,71 +451,104 @@ export default function DashboardPage() {
 
           </>}
 
-          {/* Call History Tab */}
-          {activeTab === 'history' && (
-          <>
-          {workflows.some(w => w.callId) ? (
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <History className="w-4 h-4 text-slate-400" />
-                <h2 className="text-base font-bold text-slate-900">Call History</h2>
+          {/* ── COMPLETED TAB ── */}
+          {activeTab === 'completed' && (
+            done.length > 0 ? (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <CheckCircle2 className="w-4 h-4 text-teal-400" />
+                  <h2 className="text-base font-bold text-slate-900">Completed Workflows</h2>
+                  <span className="text-xs text-slate-400 ml-auto">{done.length} total</span>
+                </div>
+                <div className="space-y-3">
+                  {done.map(w => <WorkflowCard key={w.id} w={w} onApprove={handleApprove} onTrigger={handleTrigger} />)}
+                </div>
               </div>
-              <div className="space-y-3">
-                {workflows.filter(w => w.callId).map(w => {
-                  const info = transcripts[w.id]
-                  const isExpanded = expandedTranscript === w.id
-                  return (
-                    <div key={w.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                      <div className="flex items-start justify-between gap-4 p-4">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-800">{w.title}</p>
-                          <div className="flex items-center gap-3 mt-1 flex-wrap">
-                            {w.pharmacyName && <span className="text-xs text-slate-400 flex items-center gap-1"><Building2 className="w-3 h-3" />{w.pharmacyName}</span>}
-                            {w.completedAt && <span className="text-xs text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(w.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
-                            {info?.duration && <span className="text-xs text-slate-400">{Math.round(info.duration)}s</span>}
-                          </div>
-                          {info?.summary && <p className="text-xs text-slate-500 mt-2 bg-slate-50 rounded-lg px-3 py-2">{info.summary}</p>}
-                          {w.notes && !info?.summary && <p className="text-xs text-red-600 mt-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{w.notes}</p>}
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Badge status={w.status} />
-                          {(info?.transcript || w.callId) && (
-                            <button onClick={() => setExpandedTranscript(isExpanded ? null : w.id)}
-                              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium">
-                              Transcript {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      {isExpanded && (
-                        <div className="border-t border-slate-100 px-4 py-3 bg-slate-50">
-                          {info?.transcript ? (
-                            <pre className="text-xs text-slate-700 whitespace-pre-wrap font-sans leading-relaxed max-h-64 overflow-y-auto">{info.transcript}</pre>
-                          ) : (
-                            <p className="text-xs text-slate-400 italic">Transcript not yet available — it may still be processing.</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+            ) : (
+              <div className="text-center py-20">
+                <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 className="w-7 h-7 text-slate-300" />
+                </div>
+                <p className="text-sm font-semibold text-slate-500">No completed workflows yet</p>
+                <p className="text-xs text-slate-400 mt-1">Workflows will appear here once calls are finished.</p>
               </div>
-            </div>
-          ) : (
-            <div className="text-center py-20">
-              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <History className="w-7 h-7 text-slate-300" />
-              </div>
-              <p className="text-sm font-semibold text-slate-500">No call history yet</p>
-              <p className="text-xs text-slate-400 mt-1">Calls will appear here once workflows have been triggered.</p>
-            </div>
+            )
           )}
 
-          </>
+          {/* ── CALL HISTORY TAB ── */}
+          {activeTab === 'history' && (
+            workflows.some(w => w.callId) ? (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <History className="w-4 h-4 text-slate-400" />
+                  <h2 className="text-base font-bold text-slate-900">Call History</h2>
+                </div>
+                <div className="space-y-3">
+                  {workflows.filter(w => w.callId).map(w => {
+                    const info = transcripts[w.id]
+                    const isExpanded = expandedTranscript === w.id
+                    return (
+                      <div key={w.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                        <div className="flex items-start justify-between gap-4 p-4">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-800">{w.title}</p>
+                            <div className="flex items-center gap-3 mt-1 flex-wrap">
+                              {w.pharmacyName && <span className="text-xs text-slate-400 flex items-center gap-1"><Building2 className="w-3 h-3" />{w.pharmacyName}</span>}
+                              {w.completedAt && <span className="text-xs text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(w.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
+                              {info?.duration && <span className="text-xs text-slate-400">{Math.round(info.duration)}s</span>}
+                            </div>
+                            {info?.summary && <p className="text-xs text-slate-500 mt-2 bg-slate-50 rounded-lg px-3 py-2">{info.summary}</p>}
+                            {w.notes && !info?.summary && <p className="text-xs text-red-600 mt-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{w.notes}</p>}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Badge status={w.status} />
+                            {(info?.transcript || w.callId) && (
+                              <button onClick={() => setExpandedTranscript(isExpanded ? null : w.id)}
+                                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium">
+                                Transcript {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        {isExpanded && (
+                          <div className="border-t border-slate-100 px-4 py-3 bg-slate-50">
+                            {info?.transcript ? (
+                              <pre className="text-xs text-slate-700 whitespace-pre-wrap font-sans leading-relaxed max-h-64 overflow-y-auto">{info.transcript}</pre>
+                            ) : (
+                              <p className="text-xs text-slate-400 italic">Transcript not yet available — it may still be processing.</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-20">
+                <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <History className="w-7 h-7 text-slate-300" />
+                </div>
+                <p className="text-sm font-semibold text-slate-500">No call history yet</p>
+                <p className="text-xs text-slate-400 mt-1">Calls will appear here once workflows have been triggered.</p>
+              </div>
+            )
           )}
 
         </div>
       </main>
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   )
 }

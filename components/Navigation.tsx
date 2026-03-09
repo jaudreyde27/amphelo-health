@@ -1,11 +1,12 @@
 'use client'
 
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { LayoutDashboard, MessageSquare, Heart, LogOut, ChevronRight, Settings, History } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Heart, LogOut, ChevronRight, Settings, History, CheckCircle2 } from 'lucide-react'
 import { clearState } from '@/lib/storage'
 
-export default function Navigation({ patientName }: { patientName?: string }) {
+function NavigationContent({ patientName }: { patientName?: string }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -13,7 +14,9 @@ export default function Navigation({ patientName }: { patientName?: string }) {
 
   const NAV = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, desc: 'Workflows & status',
-      active: pathname === '/dashboard' && currentTab !== 'history' },
+      active: pathname === '/dashboard' && !currentTab },
+    { href: '/dashboard?tab=completed', label: 'Completed', icon: CheckCircle2, desc: 'Finished workflows',
+      active: pathname === '/dashboard' && currentTab === 'completed' },
     { href: '/dashboard?tab=history', label: 'Call History', icon: History, desc: 'Logs & transcripts',
       active: pathname === '/dashboard' && currentTab === 'history' },
     { href: '/chat', label: 'Ad Hoc Requests', icon: MessageSquare, desc: 'On-demand calls',
@@ -93,5 +96,15 @@ export default function Navigation({ patientName }: { patientName?: string }) {
         </button>
       </div>
     </aside>
+  )
+}
+
+export default function Navigation({ patientName }: { patientName?: string }) {
+  return (
+    <Suspense fallback={
+      <aside className="w-60 bg-white border-r border-slate-100 flex flex-col h-screen sticky top-0 shrink-0" />
+    }>
+      <NavigationContent patientName={patientName} />
+    </Suspense>
   )
 }
