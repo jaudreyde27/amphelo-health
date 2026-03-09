@@ -16,9 +16,18 @@ export async function GET(req: NextRequest) {
 
     // Map Vapi status → our WorkflowStatus
     const vapiStatus: string = data.status ?? ''
+    const endedReason: string = data.endedReason ?? ''
+    // Reasons that indicate a failed / incomplete call even when Vapi says "ended"
+    const FAILURE_REASONS = [
+      'silence-timed-out', 'voicemail', 'max-duration-exceeded',
+      'assistant-error', 'pipeline-error', 'no-valid-model',
+      'call-start-error', 'customer-busy', 'error',
+    ]
+    const isFailedReason = FAILURE_REASONS.some(r => endedReason.toLowerCase().includes(r))
     let status: 'in_progress' | 'completed' | 'failed' = 'in_progress'
-    if (['ended'].includes(vapiStatus)) status = 'completed'
-    else if (['failed', 'error'].includes(vapiStatus)) status = 'failed'
+    if (['failed', 'error'].includes(vapiStatus)) status = 'failed'
+    else if (vapiStatus === 'ended' && isFailedReason) status = 'failed'
+    else if (vapiStatus === 'ended') status = 'completed'
 
     return NextResponse.json({
       status,

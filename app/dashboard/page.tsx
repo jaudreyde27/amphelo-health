@@ -17,7 +17,7 @@ const STATUS: Record<WorkflowStatus, { label: string; dot: string; text: string;
   scheduled:      { label: 'Scheduled',      dot: 'bg-blue-400',   text: 'text-blue-700',   bg: 'bg-blue-50',    border: 'border-blue-200',   icon: Calendar },
   in_progress:    { label: 'In Progress',    dot: 'bg-violet-400', text: 'text-violet-700', bg: 'bg-violet-50',  border: 'border-violet-200', icon: Loader2 },
   completed:      { label: 'Completed',      dot: 'bg-teal-400',   text: 'text-teal-700',   bg: 'bg-teal-50',    border: 'border-teal-200',   icon: CheckCircle2 },
-  failed:         { label: 'Failed',         dot: 'bg-red-400',    text: 'text-red-700',    bg: 'bg-red-50',     border: 'border-red-200',    icon: AlertCircle },
+  failed:         { label: 'Failed — Action Needed', dot: 'bg-red-400', text: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', icon: AlertCircle },
 }
 
 function Badge({ status }: { status: WorkflowStatus }) {
@@ -138,6 +138,7 @@ export default function DashboardPage() {
   const [triggering, setTriggering] = useState<string | null>(null)
   const [transcripts, setTranscripts] = useState<Record<string, { transcript: string | null; summary: string | null; endedAt: string | null; duration: number | null }>>({})
   const [expandedTranscript, setExpandedTranscript] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'overview' | 'history'>('overview')
 
   useEffect(() => {
     const s = getState()
@@ -245,9 +246,34 @@ export default function DashboardPage() {
   ]
 
   // Build care network data from extended state
+  const normalizeSpecialtyDisplay = (s: string): string => {
+    if (!s?.trim()) return s
+    const map: [RegExp, string][] = [
+      [/^endo(crin(olog(ist|y)?)?)?$/i, 'Endocrinology'],
+      [/^pcp$|^primary[\s-]?care([\s-]?physician)?$/i, 'Primary Care'],
+      [/^internal[\s-]?med(icine)?$/i, 'Internal Medicine'],
+      [/^family[\s-]?(med(icine)?|practice|physician)?$/i, 'Family Medicine'],
+      [/^cardio(log(ist|y))?$/i, 'Cardiology'],
+      [/^nephro(log(ist|y))?$/i, 'Nephrology'],
+      [/^ophthalm(olog(ist|y))?$/i, 'Ophthalmology'],
+      [/^podiatr(ist|y)$/i, 'Podiatry'],
+      [/^neuro(log(ist|y))?$/i, 'Neurology'],
+      [/^derm(atolog(ist|y))?$/i, 'Dermatology'],
+      [/^gastro(enterolog(ist|y))?$/i, 'Gastroenterology'],
+      [/^rheum(atolog(ist|y))?$/i, 'Rheumatology'],
+      [/^pulm(onolog(ist|y))?$/i, 'Pulmonology'],
+      [/^ob[\s-]?gyn|obstet(rics)?|gynecolog(ist|y)$/i, 'OB/GYN'],
+      [/^psych(iatr(ist|y))?$/i, 'Psychiatry'],
+    ]
+    const t = s.trim()
+    for (const [re, full] of map) { if (re.test(t)) return full }
+    if (t === t.toLowerCase()) return t.charAt(0).toUpperCase() + t.slice(1)
+    return t
+  }
+
   const prescriberItems: string[] = (extended.prescribers ?? [])
     .filter((p: any) => p.name?.trim())
-    .map((p: any) => [p.name, p.specialty && `(${p.specialty})`].filter(Boolean).join(' '))
+    .map((p: any) => [p.name, p.specialty && `(${normalizeSpecialtyDisplay(p.specialty)})`].filter(Boolean).join(' '))
 
   const medicationItems: string[] = state.medications.map(m => [m.name, m.dosage].filter(Boolean).join(' '))
 
@@ -255,7 +281,12 @@ export default function DashboardPage() {
     .filter((d: any) => d.devType?.trim())
     .map((d: any) => [d.brand, d.devType, d.model].filter(Boolean).join(' '))
 
-  const pharmacyItems: string[] = state.pharmacies.map(p => p.name)
+  const pharmacyItems: string[] = state.pharmacies.flatMap(p => {
+    const lines = [p.name]
+    if (p.address?.trim()) lines.push(p.address.trim())
+    if (p.phone?.trim()) lines.push(p.phone.trim())
+    return lines.length > 1 ? [lines.join(' · ')] : lines
+  })
 
   const insuranceItems: string[] = (extended.insurancePlans ?? [])
     .filter((p: any) => p.planName?.trim())
@@ -279,8 +310,30 @@ export default function DashboardPage() {
           </p>
         </div>
 
+        {/* Tabs */}
+        <div className="bg-white border-b border-slate-100 px-8">
+          <div className="flex gap-1">
+            {(['overview', 'history'] as const).map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
+                  activeTab === tab
+                    ? 'border-blue-600 text-blue-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}>
+                {tab === 'overview' ? 'Overview' : 'Call History'}
+                {tab === 'history' && workflows.some(w => w.callId) && (
+                  <span className="ml-2 inline-flex items-center justify-center w-4 h-4 text-xs bg-slate-100 text-slate-600 rounded-full">
+                    {workflows.filter(w => w.callId).length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="px-8 py-7 space-y-7 max-w-5xl">
 
+          {activeTab === 'overview' && <>
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {STATS.map(s => (
@@ -365,8 +418,22 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Call History & Transcripts */}
-          {workflows.some(w => w.callId) && (
+          {workflows.length === 0 && (
+            <div className="text-center py-20">
+              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Pill className="w-7 h-7 text-slate-300" />
+              </div>
+              <p className="text-sm font-semibold text-slate-500">No workflows yet</p>
+              <p className="text-xs text-slate-400 mt-1">Complete onboarding to generate your first workflows.</p>
+            </div>
+          )}
+
+          </>}
+
+          {/* Call History Tab */}
+          {activeTab === 'history' && (
+          <>
+          {workflows.some(w => w.callId) ? (
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <History className="w-4 h-4 text-slate-400" />
@@ -387,7 +454,7 @@ export default function DashboardPage() {
                             {info?.duration && <span className="text-xs text-slate-400">{Math.round(info.duration)}s</span>}
                           </div>
                           {info?.summary && <p className="text-xs text-slate-500 mt-2 bg-slate-50 rounded-lg px-3 py-2">{info.summary}</p>}
-                          {w.notes && !info?.summary && <p className="text-xs text-slate-500 mt-2 bg-slate-50 rounded-lg px-3 py-2">{w.notes}</p>}
+                          {w.notes && !info?.summary && <p className="text-xs text-red-600 mt-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{w.notes}</p>}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <Badge status={w.status} />
@@ -413,17 +480,19 @@ export default function DashboardPage() {
                 })}
               </div>
             </div>
-          )}
-
-          {workflows.length === 0 && (
+          ) : (
             <div className="text-center py-20">
               <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Pill className="w-7 h-7 text-slate-300" />
+                <History className="w-7 h-7 text-slate-300" />
               </div>
-              <p className="text-sm font-semibold text-slate-500">No workflows yet</p>
-              <p className="text-xs text-slate-400 mt-1">Complete onboarding to generate your first workflows.</p>
+              <p className="text-sm font-semibold text-slate-500">No call history yet</p>
+              <p className="text-xs text-slate-400 mt-1">Calls will appear here once workflows have been triggered.</p>
             </div>
           )}
+
+          </>
+          )}
+
         </div>
       </main>
     </div>

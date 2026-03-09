@@ -171,11 +171,11 @@ export default function LandingPage() {
               AI-powered care coordination
             </div>
             <h1 className="text-5xl font-extrabold text-slate-900 leading-[1.1] tracking-tight mb-6">
-              T1D care takes{' '}
-              <span className="text-gradient">a village.</span>
+              Your Type One Diabetes admin,{' '}
+              <span className="text-gradient">handled automatically.</span>
             </h1>
             <p className="text-lg text-slate-600 leading-relaxed mb-8 max-w-md">
-              Amphelo helps manage your pharmacy, specialists, insurance and other stakeholders
+              T1D care takes a village. Amphelo helps manage your pharmacy, specialists, insurance and other stakeholders
               on your behalf — managing refills, checking statuses, and handling requests so you don't have to.
             </p>
             <div className="flex items-center gap-4">

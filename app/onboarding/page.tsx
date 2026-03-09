@@ -28,6 +28,66 @@ interface ChatMsg { id: string; role: 'ai' | 'user'; content: string }
 
 function uid() { return Math.random().toString(36).slice(2) + Date.now().toString(36) }
 
+function normalizeSpecialty(s: string): string {
+  const t = s.trim()
+  if (!t) return t
+  const map: [RegExp, string][] = [
+    [/^endo(crin(olog(ist|y)?)?)?$/i, 'Endocrinology'],
+    [/^pcp$|^primary[\s-]?care([\s-]?physician)?$/i, 'Primary Care'],
+    [/^internal[\s-]?med(icine)?$/i, 'Internal Medicine'],
+    [/^family[\s-]?(med(icine)?|practice|physician)?$/i, 'Family Medicine'],
+    [/^cardio(log(ist|y))?$/i, 'Cardiology'],
+    [/^nephro(log(ist|y))?$/i, 'Nephrology'],
+    [/^ophthalm(olog(ist|y))?$/i, 'Ophthalmology'],
+    [/^optom(etri(st|y))?$/i, 'Optometry'],
+    [/^podiatr(ist|y)$/i, 'Podiatry'],
+    [/^neuro(log(ist|y))?$/i, 'Neurology'],
+    [/^derm(atolog(ist|y))?$/i, 'Dermatology'],
+    [/^gastro(enterolog(ist|y))?$/i, 'Gastroenterology'],
+    [/^rheum(atolog(ist|y))?$/i, 'Rheumatology'],
+    [/^pulm(onolog(ist|y))?$/i, 'Pulmonology'],
+    [/^hematolog(ist|y)$/i, 'Hematology'],
+    [/^onco(log(ist|y))?$/i, 'Oncology'],
+    [/^infect(ious[\s-]?disease)?$/i, 'Infectious Disease'],
+    [/^endo[\s-]?surge(on|ry)?$/i, 'Endocrine Surgery'],
+    [/^ob[\s-]?gyn|obstet(rics)?|gynecolog(ist|y)$/i, 'OB/GYN'],
+    [/^psych(iatr(ist|y))?$/i, 'Psychiatry'],
+    [/^np$|^nurse[\s-]?pract(itioner)?$/i, 'Nurse Practitioner'],
+    [/^pa$|^physician[\s-]?assist(ant)?$/i, 'Physician Assistant'],
+  ]
+  for (const [re, full] of map) {
+    if (re.test(t)) return full
+  }
+  // Title-case if all lowercase
+  if (t === t.toLowerCase()) return t.charAt(0).toUpperCase() + t.slice(1)
+  return t
+}
+
+function normalizeFrequency(s: string): string {
+  const t = s.trim()
+  if (!t) return t
+  const l = t.toLowerCase().replace(/[-–]/g, ' ')
+  if (/^(every\s+)?1\s*month(ly)?(\s+supply)?$/.test(l) || l === 'monthly' || l === '1 month supply') return 'Monthly (30-day supply)'
+  if (/^(every\s+)?3\s*months?(\s+supply)?$/.test(l) || /^quarterly/.test(l) || l === '3 month supply') return 'Quarterly (90-day supply)'
+  if (/^(every\s+)?30\s*days?(\s+supply)?$/.test(l) || l === '30 day supply') return 'Every 30 days'
+  if (/^(every\s+)?90\s*days?(\s+supply)?$/.test(l) || l === '90 day supply') return 'Every 90 days'
+  if (/^(every\s+)?2\s*weeks?$/.test(l)) return 'Every 2 weeks'
+  if (/^(every\s+)?4\s*weeks?$/.test(l)) return 'Every 4 weeks'
+  if (/^weekly$/.test(l)) return 'Weekly'
+  return t
+}
+
+function normalizeFormat(s: string): string {
+  const t = s.trim()
+  if (!t) return t
+  const l = t.toLowerCase().replace(/[-–]/g, ' ')
+  if (/^1\s*month(ly)?\s*supply$/.test(l)) return '30-day supply'
+  if (/^3\s*months?\s*supply$/.test(l)) return '90-day supply'
+  if (/^2\s*months?\s*supply$/.test(l)) return '60-day supply'
+  if (/^(\d+)\s*ml\s*vial$/.test(l)) return t.replace(/ml/i, 'mL').replace(/vial/i, 'vial')
+  return t
+}
+
 function parseFrequencyToDays(freq: string): number {
   if (!freq) return 30
   const f = freq.toLowerCase()
@@ -355,9 +415,10 @@ export default function OnboardingPage() {
 
     const medicationsWithIds: Medication[] = rxEntries.filter(r => r.name.trim()).map(r => {
       const pharm = pharmForItem(r.name)
-      const daysSupply = parseFrequencyToDays(r.refillFrequency)
+      const normFreq = normalizeFrequency(r.refillFrequency)
+      const daysSupply = parseFrequencyToDays(normFreq)
       return {
-        id: makeId(), name: r.name, dosage: r.format, frequency: r.refillFrequency,
+        id: makeId(), name: r.name, dosage: normalizeFormat(r.format), frequency: normFreq,
         prescriptionNumber: '', refillsRemaining: 3,
         lastFilled: r.lastPickedUp || today,
         daysSupply, pharmacyId: pharm?.id ?? '',
@@ -435,7 +496,7 @@ export default function OnboardingPage() {
         devices: deviceEntries,
         manufacturerContactType,
         manufacturers: manufacturerEntries,
-        prescribers: prescriberEntries,
+        prescribers: prescriberEntries.map(p => ({ ...p, specialty: normalizeSpecialty(p.specialty) })),
         insurancePlans: insurPlans,
         priorAuths, coverageNotes,
       } as any),
