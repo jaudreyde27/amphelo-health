@@ -99,6 +99,7 @@ export function formatScheduledDate(iso: string): string {
   const diff = Math.floor((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
   if (diff === 0) return 'Today'
   if (diff === 1) return 'Tomorrow'
+  if (diff < 0) return 'Ad hoc'
   if (diff < 7) return `In ${diff} days`
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }

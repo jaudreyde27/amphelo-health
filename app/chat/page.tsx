@@ -16,7 +16,7 @@ function uuid() { return Math.random().toString(36).slice(2) + Date.now().toStri
 function CallStatus({ status }: { status?: ChatMessage['callStatus'] }) {
   if (!status) return null
   const cfg = {
-    initiating:  { icon: Loader2, text: 'Initiating call to pharmacy...', spin: true,  cls: 'bg-blue-50 text-blue-600 border-blue-100' },
+    initiating:  { icon: Loader2, text: 'Initiating call to pharmacy...', spin: false, cls: 'bg-blue-50 text-blue-600 border-blue-100' },
     in_progress: { icon: Phone,   text: 'Call initiated',                 spin: false, cls: 'bg-violet-50 text-violet-600 border-violet-100' },
     completed:   { icon: CheckCircle2, text: 'Call completed successfully',spin: false, cls: 'bg-teal-50 text-teal-600 border-teal-100' },
     failed:      { icon: XCircle, text: 'Call failed — please try again', spin: false, cls: 'bg-red-50 text-red-600 border-red-100' },
