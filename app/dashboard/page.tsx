@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   CheckCircle2, Clock, AlertCircle, Loader2, Calendar,
   Pill, Building2, RefreshCw, Zap, ArrowRight, Phone,
@@ -43,9 +43,13 @@ function WorkflowCard({ w, onApprove, onTrigger }: { w: Workflow; onApprove: (id
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm font-bold text-slate-900">{w.title}</p>
-              {w.isRecurring && (
+              {w.isRecurring ? (
                 <span className="inline-flex items-center gap-1 text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                  <RefreshCw className="w-2.5 h-2.5" />Monthly
+                  <RefreshCw className="w-2.5 h-2.5" />Recurring
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs text-violet-600 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded-full">
+                  <Zap className="w-2.5 h-2.5" />Ad Hoc
                 </span>
               )}
             </div>
@@ -138,7 +142,14 @@ export default function DashboardPage() {
   const [triggering, setTriggering] = useState<string | null>(null)
   const [transcripts, setTranscripts] = useState<Record<string, { transcript: string | null; summary: string | null; endedAt: string | null; duration: number | null }>>({})
   const [expandedTranscript, setExpandedTranscript] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'history'>('overview')
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState<'overview' | 'history'>(
+    searchParams.get('tab') === 'history' ? 'history' : 'overview'
+  )
+
+  useEffect(() => {
+    setActiveTab(searchParams.get('tab') === 'history' ? 'history' : 'overview')
+  }, [searchParams])
 
   useEffect(() => {
     const s = getState()
@@ -310,27 +321,6 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Tabs */}
-        <div className="bg-white border-b border-slate-100 px-8">
-          <div className="flex gap-1">
-            {(['overview', 'history'] as const).map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
-                  activeTab === tab
-                    ? 'border-blue-600 text-blue-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}>
-                {tab === 'overview' ? 'Overview' : 'Call History'}
-                {tab === 'history' && workflows.some(w => w.callId) && (
-                  <span className="ml-2 inline-flex items-center justify-center w-4 h-4 text-xs bg-slate-100 text-slate-600 rounded-full">
-                    {workflows.filter(w => w.callId).length}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
         <div className="px-8 py-7 space-y-7 max-w-5xl">
 
           {activeTab === 'overview' && <>
@@ -384,19 +374,39 @@ export default function DashboardPage() {
           )}
 
           {/* Active workflows */}
-          {[...active, ...needs, ...sched].length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-bold text-slate-900">Active Workflows</h2>
-                <span className="text-xs text-slate-400">{[...active, ...needs, ...sched].length} total</span>
+          {[...active, ...needs, ...sched].length > 0 && (() => {
+            const all = [...active, ...needs, ...sched]
+            const recurring = all.filter(w => w.isRecurring)
+            const adhoc = all.filter(w => !w.isRecurring)
+            return (
+              <div className="space-y-6">
+                {recurring.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
+                      <h2 className="text-base font-bold text-slate-900">Scheduled Workflows</h2>
+                      <span className="text-xs text-slate-400 ml-auto">{recurring.length} total</span>
+                    </div>
+                    <div className="space-y-3">
+                      {recurring.map(w => <WorkflowCard key={w.id} w={w} onApprove={handleApprove} onTrigger={handleTrigger} />)}
+                    </div>
+                  </div>
+                )}
+                {adhoc.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Zap className="w-3.5 h-3.5 text-violet-400" />
+                      <h2 className="text-base font-bold text-slate-900">Ad Hoc Requests</h2>
+                      <span className="text-xs text-slate-400 ml-auto">{adhoc.length} total</span>
+                    </div>
+                    <div className="space-y-3">
+                      {adhoc.map(w => <WorkflowCard key={w.id} w={w} onApprove={handleApprove} onTrigger={handleTrigger} />)}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="space-y-3">
-                {[...active, ...needs, ...sched].map(w => (
-                  <WorkflowCard key={w.id} w={w} onApprove={handleApprove} onTrigger={handleTrigger} />
-                ))}
-              </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Failed */}
           {failed.length > 0 && (

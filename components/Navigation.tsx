@@ -1,19 +1,26 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, MessageSquare, Heart, LogOut, ChevronRight, Settings } from 'lucide-react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { LayoutDashboard, MessageSquare, Heart, LogOut, ChevronRight, Settings, History } from 'lucide-react'
 import { clearState } from '@/lib/storage'
-
-const NAV = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, desc: 'Workflows & status' },
-  { href: '/chat', label: 'Ad Hoc Requests', icon: MessageSquare, desc: 'On-demand calls' },
-  { href: '/settings', label: 'Settings', icon: Settings, desc: 'Update your profile' },
-]
 
 export default function Navigation({ patientName }: { patientName?: string }) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
+  const currentTab = searchParams.get('tab')
+
+  const NAV = [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, desc: 'Workflows & status',
+      active: pathname === '/dashboard' && currentTab !== 'history' },
+    { href: '/dashboard?tab=history', label: 'Call History', icon: History, desc: 'Logs & transcripts',
+      active: pathname === '/dashboard' && currentTab === 'history' },
+    { href: '/chat', label: 'Ad Hoc Requests', icon: MessageSquare, desc: 'On-demand calls',
+      active: pathname === '/chat' },
+    { href: '/settings', label: 'Settings', icon: Settings, desc: 'Update your profile',
+      active: pathname === '/settings' },
+  ]
 
   return (
     <aside className="w-60 bg-white border-r border-slate-100 flex flex-col h-screen sticky top-0 shrink-0">
@@ -53,29 +60,26 @@ export default function Navigation({ patientName }: { patientName?: string }) {
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1">
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">Navigation</p>
-        {NAV.map(({ href, label, icon: Icon, desc }) => {
-          const active = pathname === href
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`group flex items-center justify-between px-3 py-2.5 rounded-xl transition-all
-                ${active
-                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Icon className="w-4 h-4 shrink-0" />
-                <div>
-                  <p className="text-xs font-semibold leading-tight">{label}</p>
-                  <p className={`text-xs leading-tight mt-0.5 ${active ? 'text-blue-200' : 'text-slate-400'}`}>{desc}</p>
-                </div>
+        {NAV.map(({ href, label, icon: Icon, desc, active }) => (
+          <Link
+            key={href}
+            href={href}
+            className={`group flex items-center justify-between px-3 py-2.5 rounded-xl transition-all
+              ${active
+                ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Icon className="w-4 h-4 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold leading-tight">{label}</p>
+                <p className={`text-xs leading-tight mt-0.5 ${active ? 'text-blue-200' : 'text-slate-400'}`}>{desc}</p>
               </div>
-              <ChevronRight className={`w-3 h-3 shrink-0 transition-opacity ${active ? 'opacity-70' : 'opacity-0 group-hover:opacity-30'}`} />
-            </Link>
-          )
-        })}
+            </div>
+            <ChevronRight className={`w-3 h-3 shrink-0 transition-opacity ${active ? 'opacity-70' : 'opacity-0 group-hover:opacity-30'}`} />
+          </Link>
+        ))}
       </nav>
 
       {/* Footer */}
