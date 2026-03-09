@@ -95,8 +95,8 @@ function DashboardPreview() {
 
             {/* Workflow cards */}
             {[
-              { name: 'Lisinopril 10mg', pharmacy: 'CVS Pharmacy', status: 'Needs Approval', sc: 'bg-amber-50 border-amber-200 text-amber-700' },
-              { name: 'Metformin 500mg', pharmacy: 'Walgreens', status: 'Scheduled', sc: 'bg-blue-50 border-blue-200 text-blue-700' },
+              { name: 'Humalog 100u/mL', pharmacy: 'CVS Pharmacy', status: 'Needs Approval', sc: 'bg-amber-50 border-amber-200 text-amber-700' },
+              { name: 'Dexcom G7 Sensor', pharmacy: 'Walgreens', status: 'Scheduled', sc: 'bg-blue-50 border-blue-200 text-blue-700' },
             ].map((w) => (
               <div key={w.name} className="bg-slate-50 border border-slate-200 rounded-xl p-3">
                 <div className="flex items-start justify-between">

@@ -72,6 +72,8 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  // pending polls: { callId, pharmacyName, workflowId }
+  const pendingCalls = useRef<{ callId: string; pharmacyName: string; workflowId: string }[]>([])
 
   useEffect(() => {
     const s = getState()
@@ -90,6 +92,55 @@ export default function ChatPage() {
   }, [router])
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+  // Poll active calls for completion and post result back into chat
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (pendingCalls.current.length === 0) return
+      const still: typeof pendingCalls.current = []
+      await Promise.all(pendingCalls.current.map(async ({ callId, pharmacyName, workflowId }) => {
+        try {
+          const res = await fetch(`/api/call-status?id=${callId}`)
+          const data = await res.json()
+          if (!data.status || data.status === 'in_progress') {
+            still.push({ callId, pharmacyName, workflowId })
+            return
+          }
+          // Update workflow in storage
+          const { updateWorkflow } = await import('@/lib/storage')
+          updateWorkflow(workflowId, {
+            status: data.status,
+            notes: data.endedReason ?? data.summary ?? undefined,
+            completedAt: data.endedAt ?? undefined,
+          })
+          // Build a human-friendly summary message
+          let content = ''
+          if (data.status === 'completed') {
+            content = `✅ Call to ${pharmacyName} completed.`
+            if (data.summary) content += ` ${data.summary}`
+            else if (data.endedReason) content += ` The call ended: ${data.endedReason}.`
+            else content += ' Your request was handled successfully.'
+          } else {
+            content = `⚠️ The call to ${pharmacyName} ended with status: ${data.status}.`
+            if (data.endedReason) content += ` Reason: ${data.endedReason}.`
+            if (data.summary) content += ` ${data.summary}`
+            content += ' You can retry from the dashboard or try calling the pharmacy directly.'
+          }
+          const msg: ChatMessage = {
+            id: uuid(), role: 'assistant', timestamp: new Date().toISOString(),
+            workflowId, callStatus: data.status === 'completed' ? 'completed' : 'failed',
+            content,
+          }
+          addMessage(msg)
+          setMessages(prev => [...prev, msg])
+        } catch {
+          still.push({ callId, pharmacyName, workflowId })
+        }
+      }))
+      pendingCalls.current = still
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [])
 
   const pushMsg = (msg: ChatMessage) => { addMessage(msg); setMessages(p => [...p, msg]) }
 
@@ -158,12 +209,16 @@ export default function ChatPage() {
           prescriptionNumber: targetMed?.prescriptionNumber,
           workflowType: type,
         })
+        if (data.id) {
+          pendingCalls.current.push({ callId: data.id, pharmacyName: pharmacy.name, workflowId: workflow.id })
+        }
         pushMsg({
           id: uuid(), role: 'assistant', timestamp: new Date().toISOString(),
           workflowId: workflow.id,
+          callId: data.id,
           callStatus: data.id ? 'in_progress' : 'failed',
           content: data.id
-            ? `Call placed to ${pharmacy.name}. Check your dashboard for status updates once the call completes.`
+            ? `Call placed to ${pharmacy.name}. I'll let you know right here when it's done.`
             : `Something went wrong: ${data.error ?? 'unknown error'}. Please try again or call the pharmacy directly.`,
         })
       } catch {

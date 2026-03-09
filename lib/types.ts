@@ -55,6 +55,7 @@ export interface ChatMessage {
   content: string
   timestamp: string
   workflowId?: string
+  callId?: string
   callStatus?: 'initiating' | 'in_progress' | 'completed' | 'failed'
 }
 
