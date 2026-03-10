@@ -523,7 +523,7 @@ export default function OnboardingPage() {
           onClick={async () => {
             const { loadDemoState } = await import('@/lib/demoData')
             loadDemoState()
-            router.push('/dashboard')
+            window.location.href = '/dashboard'
           }}
           className="flex items-center gap-1 text-xs text-violet-600 hover:text-violet-700 font-medium transition-colors"
         >

@@ -190,7 +190,7 @@ export default function LandingPage() {
                 onClick={async () => {
                   const { loadDemoState } = await import('@/lib/demoData')
                   loadDemoState()
-                  router.push('/dashboard')
+                  window.location.href = '/dashboard'
                 }}
                 className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 font-semibold px-6 py-3.5 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
               >

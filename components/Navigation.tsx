@@ -3,7 +3,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { LayoutDashboard, MessageSquare, Heart, LogOut, ChevronRight, Settings, History, CheckCircle2 } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Heart, LogOut, ChevronRight, Settings, History, CheckCircle2, Zap } from 'lucide-react'
 import { clearState } from '@/lib/storage'
 
 function NavigationContent({ patientName }: { patientName?: string }) {
@@ -86,7 +86,18 @@ function NavigationContent({ patientName }: { patientName?: string }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 pb-4 pt-3 border-t border-slate-100">
+      <div className="px-3 pb-4 pt-3 border-t border-slate-100 space-y-1">
+        <button
+          onClick={async () => {
+            const { loadDemoState } = await import('@/lib/demoData')
+            loadDemoState()
+            window.location.href = '/dashboard'
+          }}
+          className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs text-violet-500 hover:bg-violet-50 hover:text-violet-700 transition-colors font-medium"
+        >
+          <Zap className="w-3.5 h-3.5" />
+          Load demo data
+        </button>
         <button
           onClick={() => { clearState(); router.push('/') }}
           className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"

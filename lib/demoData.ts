@@ -1,4 +1,4 @@
-import { setState } from './storage'
+import { clearState } from './storage'
 import type { AppState } from './types'
 
 const ts = (daysOffset: number, hour = 9, minute = 0) => {
@@ -167,5 +167,8 @@ export function loadDemoState() {
     ],
   }
 
-  setState(state as unknown as AppState)
+  clearState()
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('healthcare_app_state', JSON.stringify(state))
+  }
 }
