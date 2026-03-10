@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   Heart, Pill, Calendar, MessageSquare, CheckCircle2,
-  ArrowRight, Phone, Clock, Shield, Sparkles, ChevronRight
+  ArrowRight, Phone, Clock, Shield, Sparkles, ChevronRight, Zap
 } from 'lucide-react'
 import { isOnboardingComplete } from '@/lib/storage'
 
@@ -178,7 +178,7 @@ export default function LandingPage() {
               T1D care takes a village. Amphelo helps manage your pharmacy, specialists, insurance and other stakeholders
               on your behalf — managing refills, checking statuses, and handling requests so you don't have to.
             </p>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
               <Link
                 href="/onboarding"
                 className="flex items-center gap-2 bg-blue-600 text-white font-semibold px-6 py-3.5 rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
@@ -186,8 +186,19 @@ export default function LandingPage() {
                 Start your intake
                 <ChevronRight className="w-4 h-4" />
               </Link>
-              <p className="text-sm text-slate-400">Free · No account needed</p>
+              <button
+                onClick={async () => {
+                  const { loadDemoState } = await import('@/lib/demoData')
+                  loadDemoState()
+                  router.push('/dashboard')
+                }}
+                className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 font-semibold px-6 py-3.5 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+              >
+                <Zap className="w-4 h-4 text-violet-500" />
+                View demo
+              </button>
             </div>
+            <p className="text-sm text-slate-400 mt-2">Free · No account needed</p>
             {/* Trust indicators */}
             <div className="flex items-center gap-5 mt-10 pt-8 border-t border-slate-100">
               {[

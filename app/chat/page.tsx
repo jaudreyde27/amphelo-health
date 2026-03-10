@@ -186,11 +186,18 @@ export default function ChatPage() {
       ? `Status check — ${targetMed?.name ?? 'prescription'}`
       : 'Custom pharmacy request'
 
+    const onItMsg = (() => {
+      if (!pharmacy?.phone) return `I'll log this request. Note: no pharmacy phone on file for manual follow-up.`
+      const pharm = pharmacy?.name ?? 'the pharmacy'
+      const med = targetMed?.name ?? 'your medication'
+      if (type === 'refill') return `On it — requesting a ${med} refill from ${pharm} now.`
+      if (type === 'status_check') return `On it — checking your ${med} prescription status at ${pharm} now.`
+      if (type === 'new_prescription') return `On it — coordinating a new prescription with ${pharm} now.`
+      return `On it — calling ${pharm} now.`
+    })()
     pushMsg({
       id: uuid(), role: 'assistant', timestamp: new Date().toISOString(),
-      content: pharmacy?.phone
-        ? `On it — I'm calling ${pharmacy?.name ?? 'the pharmacy'} now.`
-        : `I'll log this request. Note: no pharmacy phone on file for manual follow-up.`,
+      content: onItMsg,
       callStatus: pharmacy?.phone ? 'initiating' : undefined,
     })
 
@@ -218,7 +225,11 @@ export default function ChatPage() {
           callId: data.id,
           callStatus: data.id ? 'in_progress' : 'failed',
           content: data.id
-            ? `Call placed to ${pharmacy.name}. I'll let you know right here when it's done.`
+            ? (type === 'refill'
+                ? `Refill request for ${targetMed?.name ?? 'your medication'} placed with ${pharmacy.name}. I'll update you here as soon as the call completes.`
+                : type === 'status_check'
+                ? `Status check for ${targetMed?.name ?? 'your prescription'} placed with ${pharmacy.name}. I'll update you here once I hear back.`
+                : `Request placed with ${pharmacy.name}. I'll let you know right here when it's done.`)
             : `Something went wrong: ${data.error ?? 'unknown error'}. Please try again or call the pharmacy directly.`,
         })
       } catch {

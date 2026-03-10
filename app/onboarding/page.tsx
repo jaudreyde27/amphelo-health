@@ -519,7 +519,17 @@ export default function OnboardingPage() {
           </div>
           <span className="text-sm font-bold text-slate-900">Amphelo</span>
         </div>
-        <div className="text-xs text-slate-400">{currentPhase + 1} of 7</div>
+        <button
+          onClick={async () => {
+            const { loadDemoState } = await import('@/lib/demoData')
+            loadDemoState()
+            router.push('/dashboard')
+          }}
+          className="flex items-center gap-1 text-xs text-violet-600 hover:text-violet-700 font-medium transition-colors"
+        >
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          Skip · Load demo
+        </button>
       </div>
 
       {/* Progress */}

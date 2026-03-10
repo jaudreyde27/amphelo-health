@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import {
   CheckCircle2, Clock, AlertCircle, Loader2, Calendar,
   Pill, Building2, RefreshCw, Zap, ArrowRight, Phone,
-  Cpu, User, Shield, HeartHandshake, Stethoscope, History, ChevronDown, ChevronUp,
+  Cpu, User, Shield, HeartHandshake, Stethoscope, History, ChevronDown, ChevronUp, BellRing,
 } from 'lucide-react'
 import Navigation from '@/components/Navigation'
 import { getState, updateWorkflow } from '@/lib/storage'
@@ -337,6 +337,45 @@ function DashboardContent() {
             ))}
           </div>
 
+          {/* Next Scheduled Call */}
+          {(() => {
+            const next = [...sched, ...needs]
+              .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())[0]
+            if (!next) return null
+            const daysUntil = Math.ceil((new Date(next.scheduledAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            const urgency = daysUntil <= 1
+            return (
+              <div className={`flex items-center justify-between gap-4 rounded-2xl px-5 py-4 border ${urgency ? 'bg-gradient-to-r from-violet-50 to-indigo-50 border-violet-200' : 'bg-gradient-to-r from-blue-50 to-sky-50 border-blue-200'}`}>
+                <div className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${urgency ? 'bg-violet-600' : 'bg-blue-600'}`}>
+                    <BellRing className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className={`text-xs font-semibold uppercase tracking-wide ${urgency ? 'text-violet-500' : 'text-blue-500'}`}>Next scheduled call</p>
+                    <p className="text-sm font-bold text-slate-900 mt-0.5">{next.title}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                      <Building2 className="w-3 h-3" />{next.pharmacyName}
+                      <span className="text-slate-300">·</span>
+                      <Clock className="w-3 h-3" />{formatScheduledDate(next.scheduledAt)}
+                    </p>
+                  </div>
+                </div>
+                {next.status === 'scheduled' && (
+                  <button onClick={() => handleTrigger(next.id)}
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl transition-colors shrink-0 ${urgency ? 'bg-violet-600 text-white hover:bg-violet-700 shadow-sm shadow-violet-200' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                    <Zap className="w-3 h-3" />Call now
+                  </button>
+                )}
+                {next.status === 'needs_approval' && (
+                  <button onClick={() => handleApprove(next.id)}
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-amber-600 text-white hover:bg-amber-700 transition-colors shrink-0 shadow-sm shadow-amber-200">
+                    Approve <ArrowRight className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            )
+          })()}
+
           {/* Care Network */}
           {hasCareNetwork && (
             <div>
@@ -498,7 +537,11 @@ function DashboardContent() {
                               {info?.duration && <span className="text-xs text-slate-400">{Math.round(info.duration)}s</span>}
                             </div>
                             {info?.summary && <p className="text-xs text-slate-500 mt-2 bg-slate-50 rounded-lg px-3 py-2">{info.summary}</p>}
-                            {w.notes && !info?.summary && <p className="text-xs text-red-600 mt-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{w.notes}</p>}
+                            {w.notes && !info?.summary && (
+                              <p className={`text-xs mt-2 rounded-lg px-3 py-2 ${w.status === 'completed' ? 'text-teal-700 bg-teal-50 border border-teal-100' : 'text-red-600 bg-red-50 border border-red-100'}`}>
+                                {w.notes}
+                              </p>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <Badge status={w.status} />
