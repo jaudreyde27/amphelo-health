@@ -17,10 +17,10 @@ export function loadDemoState() {
 
     profile: {
       id: 'patient-demo',
-      name: 'Sarah Chen',
+      name: 'Audrey De',
       dateOfBirth: '1989-04-15',
       phone: '(415) 204-8823',
-      email: 'sarah.chen@gmail.com',
+      email: 'audrey.de@gmail.com',
       createdAt: ts(-60),
     },
 
@@ -142,7 +142,7 @@ export function loadDemoState() {
     messages: [
       {
         id: 'msg-welcome', role: 'assistant', timestamp: ts(-5, 14, 0),
-        content: "Hi Sarah! I'm your Amphelo care coordinator. I can request prescription refills, check statuses, and handle any pharmacy needs on your behalf. What can I help you with today?",
+        content: "Hi Audrey! I'm your Amphelo care coordinator. I can request prescription refills, check statuses, and handle any pharmacy needs on your behalf. What can I help you with today?",
       },
       {
         id: 'msg-u1', role: 'user', timestamp: ts(-5, 14, 2),
