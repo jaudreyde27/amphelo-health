@@ -65,6 +65,44 @@ function RunNowButton({ workflowId, isFailed, onTrigger }: {
   )
 }
 
+function getStatusHeadline(workflow: Workflow | null, medication: Medication, status: WorkflowStatus | 'none'): string {
+  if (!workflow || status === 'none') return 'No Refill Scheduled'
+  const notes = workflow.notes?.toLowerCase() ?? ''
+  if (status === 'in_progress') return 'Amphelo Currently Calling Pharmacy'
+  if (status === 'completed') {
+    if (notes.includes('ready for pickup')) return 'Ready for Pickup'
+    if (notes.includes('out of refills') || notes.includes('reauthorization')) return 'Awaiting Prescription Renewal'
+    return 'Refill Confirmed'
+  }
+  if (status === 'failed') {
+    if (notes.includes('out of refills')) return 'Out of Refills — Pharmacy Contacting Doctor'
+    if (notes.includes('out of stock')) return 'Out of Stock — Pharmacy Working on It'
+    if (notes.includes('no pharmacy phone')) return 'Action Needed — No Pharmacy Phone on File'
+    return 'Action Needed'
+  }
+  if (status === 'scheduled') {
+    const nextRefill = nextRefillDate(medication)
+    if (nextRefill) {
+      const days = Math.ceil((nextRefill.getTime() - Date.now()) / 86400000)
+      if (days <= 0) return 'Refill Due Now'
+      if (days === 1) return 'Refill Due Tomorrow'
+      return `Refill Due in ${days} Days`
+    }
+    return 'Refill Scheduled'
+  }
+  return 'Pending'
+}
+
+function nextRefillDate(medication: Medication): Date | null {
+  if (!medication.lastFilled || !medication.daysSupply) return null
+  const d = new Date(medication.lastFilled)
+  d.setDate(d.getDate() + medication.daysSupply)
+  return d
+}
+
+const fmtDate = (d: Date | string) =>
+  new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
 // Section 1: one card per medication
 function MedicationCard({ medication, workflow, pharmacy, onTrigger }: {
   medication: Medication
@@ -73,48 +111,65 @@ function MedicationCard({ medication, workflow, pharmacy, onTrigger }: {
   onTrigger: (id: string) => void
 }) {
   const status = workflow ? displayStatus(workflow) : 'none'
-  const actionDate = workflow?.completedAt ?? workflow?.scheduledAt
-  const actionLabel = workflow?.completedAt ? 'Last action' : 'Scheduled'
+  const headline = getStatusHeadline(workflow, medication, status)
+  const refillDate = nextRefillDate(medication)
+
+  const headlineColor =
+    status === 'completed' ? 'text-teal-700' :
+    status === 'failed'    ? 'text-red-600'  :
+    status === 'none'      ? 'text-slate-400' :
+    'text-slate-900'
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-3 hover:shadow-sm hover:border-slate-300 transition-all">
       <StatusCircle status={status as WorkflowStatus | 'none'} />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-slate-900">{medication.name}</p>
-        <p className="text-xs text-slate-400 mt-0.5">{medication.dosage}</p>
 
-        {workflow?.description && (
-          <p className="text-xs text-slate-600 mt-1.5 leading-snug">{workflow.description}</p>
-        )}
-        {!workflow && (
-          <p className="text-xs text-slate-400 mt-1.5 italic">No refill scheduled</p>
-        )}
+        {/* Line 1: medication name (bold) + dosage (light grey) */}
+        <p className="text-sm font-bold text-slate-900 leading-tight">
+          {medication.name}
+          <span className="font-normal text-slate-400 ml-1.5">{medication.dosage}</span>
+        </p>
 
-        {/* Pharmacy details */}
-        {pharmacy && (
-          <div className="mt-2 space-y-1">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-              <Building2 className="w-3 h-3 shrink-0" />{pharmacy.name}
-            </div>
-            {pharmacy.address && (
-              <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                <MapPin className="w-3 h-3 shrink-0" />{pharmacy.address}
-              </div>
+        {/* Line 2: status headline (bold, colored) */}
+        <p className={`text-sm font-bold mt-1 leading-tight ${headlineColor}`}>{headline}</p>
+
+        {/* Date details: Next Refill + Amphelo action */}
+        {(refillDate || workflow?.scheduledAt) && (
+          <div className="mt-2 space-y-0.5">
+            {refillDate && (
+              <p className="text-xs text-slate-500">
+                <span className="font-medium">Next Refill:</span> {fmtDate(refillDate)}
+              </p>
             )}
-            {pharmacy.phone && (
-              <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                <Phone className="w-3 h-3 shrink-0" />{pharmacy.phone}
-              </div>
+            {workflow && status === 'scheduled' && workflow.scheduledAt && (
+              <p className="text-xs text-slate-500">
+                <span className="font-medium">Amphelo to confirm with pharmacy:</span> {fmtDate(workflow.scheduledAt)}
+              </p>
+            )}
+            {workflow?.completedAt && (
+              <p className="text-xs text-slate-500">
+                <span className="font-medium">Last action:</span> {fmtDate(workflow.completedAt)}
+              </p>
             )}
           </div>
         )}
 
-        {actionDate && (
-          <p className="text-xs text-slate-400 mt-1.5">
-            {actionLabel}: {new Date(actionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        {/* Refills remaining */}
+        {medication.refillsRemaining !== undefined && (
+          <p className={`text-[11px] mt-1.5 ${medication.refillsRemaining <= 1 ? 'text-amber-600 font-semibold' : 'text-slate-400'}`}>
+            {medication.refillsRemaining} refill{medication.refillsRemaining !== 1 ? 's' : ''} remaining
           </p>
         )}
 
+        {/* Pharmacy — compact, small */}
+        {pharmacy && (
+          <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+            {[pharmacy.name, pharmacy.address, pharmacy.phone].filter(Boolean).join(' · ')}
+          </p>
+        )}
+
+        {/* Notes (failures / completion details) */}
         {workflow?.notes && (
           <p className={`text-xs mt-2 rounded-lg px-3 py-1.5 leading-snug ${
             status === 'failed'    ? 'text-red-600 bg-red-50 border border-red-100' :
