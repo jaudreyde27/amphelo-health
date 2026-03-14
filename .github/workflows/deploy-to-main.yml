@@ -30,8 +30,5 @@ jobs:
           git merge --no-edit origin/${{ github.ref_name }}
           git push origin main
 
-      - name: Trigger Vercel deployment
-        run: |
-          if [ -n "${{ secrets.VERCEL_DEPLOY_HOOK }}" ]; then
-            curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
-          fi
+      - name: Deploy to Vercel
+        run: npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
