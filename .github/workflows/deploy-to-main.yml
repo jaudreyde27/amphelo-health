@@ -1,4 +1,4 @@
-name: Auto-merge claude branch to main
+name: Auto-deploy to Vercel via main
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - 'claude/**'
 
 jobs:
-  merge-to-main:
+  deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -23,9 +23,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Merge to main and push
+      - name: Merge to main
         run: |
           git fetch origin main
           git checkout main
           git merge --no-edit origin/${{ github.ref_name }}
           git push origin main
+
+      - name: Trigger Vercel deployment
+        if: ${{ secrets.VERCEL_DEPLOY_HOOK != '' }}
+        run: curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
