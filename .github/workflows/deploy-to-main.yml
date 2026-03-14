@@ -30,5 +30,13 @@ jobs:
           git merge --no-edit origin/${{ github.ref_name }}
           git push origin main
 
+      - name: Link Vercel project
+        run: |
+          VERCEL_ORG_ID=$(curl -s https://api.vercel.com/v2/user \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+            | jq -r '.user.id')
+          mkdir -p .vercel
+          echo "{\"orgId\":\"$VERCEL_ORG_ID\",\"projectId\":\"prj_H6TnKJSpD4aJ1pn7ZC7ePhaUqYjY\"}" > .vercel/project.json
+
       - name: Deploy to Vercel
         run: npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
