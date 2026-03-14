@@ -2,25 +2,25 @@
 
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { LayoutDashboard, MessageSquare, Heart, LogOut, ChevronRight, Settings, History, CheckCircle2, Zap } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { LayoutDashboard, MessageSquare, Heart, LogOut, ChevronRight, Settings, ClipboardList, MapPin, Share2, Zap } from 'lucide-react'
 import { clearState } from '@/lib/storage'
 
 function NavigationContent({ patientName }: { patientName?: string }) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const router = useRouter()
-  const currentTab = searchParams.get('tab')
 
   const NAV = [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, desc: 'Workflows & status',
-      active: pathname === '/dashboard' && !currentTab },
-    { href: '/dashboard?tab=completed', label: 'Completed', icon: CheckCircle2, desc: 'Finished workflows',
-      active: pathname === '/dashboard' && currentTab === 'completed' },
-    { href: '/dashboard?tab=history', label: 'Call History', icon: History, desc: 'Logs & transcripts',
-      active: pathname === '/dashboard' && currentTab === 'history' },
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, desc: 'Status overview',
+      active: pathname === '/dashboard' },
     { href: '/chat', label: 'Ad Hoc Requests', icon: MessageSquare, desc: 'On-demand calls',
       active: pathname === '/chat' },
+    { href: '/action-log', label: 'Amphelo Action Log', icon: ClipboardList, desc: 'Actions & history',
+      active: pathname === '/action-log' },
+    { href: '/pharmacy-map', label: 'Pharmacy Map', icon: MapPin, desc: 'Your pharmacies',
+      active: pathname === '/pharmacy-map' },
+    { href: '/care-map', label: 'My Care Map', icon: Share2, desc: 'Your care network',
+      active: pathname === '/care-map' },
     { href: '/settings', label: 'Settings', icon: Settings, desc: 'Update your profile',
       active: pathname === '/settings' },
   ]
@@ -61,7 +61,7 @@ function NavigationContent({ patientName }: { patientName?: string }) {
       )}
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">Navigation</p>
         {NAV.map(({ href, label, icon: Icon, desc, active }) => (
           <Link

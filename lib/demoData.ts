@@ -106,6 +106,25 @@ export function loadDemoState() {
         notes: 'Call ended before confirmation — pharmacy may be experiencing high call volume. Tap Retry to try again.',
         createdAt: ts(-2),
       },
+      // ── appointments (custom / recurring) ────────────
+      {
+        id: 'wf-8', type: 'custom',
+        title: 'Endocrinology: Next appt in 3 months',
+        description: 'Quarterly check-in with Dr. Anita Patel — UCSF Diabetes Center',
+        status: 'completed', scheduledAt: ts(90), completedAt: ts(-1),
+        isRecurring: true,
+        notes: 'Confirmed: Next appointment with Dr. Anita Patel on Tuesday, June 9 at 3:30pm. UCSF Diabetes Center, 400 Parnassus Ave, San Francisco.',
+        createdAt: ts(-7),
+      },
+      {
+        id: 'wf-9', type: 'custom',
+        title: 'Ophthalmology: Annual eye exam due in 10 months',
+        description: 'Annual diabetic eye exam — no appointment booked yet',
+        status: 'scheduled', scheduledAt: ts(60),
+        isRecurring: true,
+        notes: 'No appointment booked. To schedule, launch an Ad Hoc Request.',
+        createdAt: ts(-1),
+      },
       // ── completed ─────────────────────────────────────
       {
         id: 'wf-5', type: 'refill', title: 'Refill Humalog 100u/mL KwikPen',
