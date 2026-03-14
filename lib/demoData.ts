@@ -73,27 +73,31 @@ export function loadDemoState() {
       // ── needs_approval ──────────────────────────────
       {
         id: 'wf-1', type: 'refill', title: 'Refill Tresiba 100u/mL FlexTouch',
-        description: 'Monthly recurring refill — due in 7 days. Approve to schedule automated call.',
+        description: 'Monthly recurring refill — Amphelo calling CVS today to confirm.',
         medicationId: 'med-2', medicationName: 'Tresiba',
         pharmacyId: CVS, pharmacyName: 'CVS Pharmacy', pharmacyPhone: '(415) 842-7700',
-        status: 'needs_approval', scheduledAt: ts(7), isRecurring: true, recurringInterval: 'monthly',
+        status: 'scheduled', scheduledAt: ts(4), isRecurring: true, recurringInterval: 'monthly',
         createdAt: ts(-1),
       },
       // ── scheduled ────────────────────────────────────
       {
         id: 'wf-2', type: 'refill', title: 'Refill Humalog 100u/mL KwikPen',
-        description: 'Monthly recurring refill — Amphelo will call CVS in 4 days.',
+        description: 'Monthly recurring refill — confirmed ready 3 days before pickup.',
         medicationId: 'med-1', medicationName: 'Humalog',
         pharmacyId: CVS, pharmacyName: 'CVS Pharmacy', pharmacyPhone: '(415) 842-7700',
-        status: 'scheduled', scheduledAt: ts(4), isRecurring: true, recurringInterval: 'monthly',
+        status: 'completed', scheduledAt: ts(1), completedAt: ts(1, 10, 8),
+        notes: 'Confirmed: Humalog 100u/mL KwikPen (Rx #4421089) is ready for pickup at CVS Pharmacy. 3 refills remaining.',
+        callId: 'demo-call-4', isRecurring: true, recurringInterval: 'monthly',
         createdAt: ts(-2),
       },
       {
         id: 'wf-3', type: 'refill', title: 'Reorder Dexcom G7 Sensor',
-        description: '10-day sensor supply — Amphelo will call Walgreens tomorrow.',
+        description: '10-day sensor supply — confirmed ready 3 days before pickup.',
         medicationId: 'med-3', medicationName: 'Dexcom G7 Sensor',
         pharmacyId: WG, pharmacyName: 'Walgreens', pharmacyPhone: '(415) 931-4450',
-        status: 'scheduled', scheduledAt: ts(1), isRecurring: true, recurringInterval: 'monthly',
+        status: 'completed', scheduledAt: ts(-2), completedAt: ts(-2, 9, 31),
+        notes: 'Confirmed: Dexcom G7 Sensor 10-pack (Rx #8813047) is ready for pickup at Walgreens. 5 refills remaining.',
+        callId: 'demo-call-5', isRecurring: true, recurringInterval: 'monthly',
         createdAt: ts(-3),
       },
       // ── failed (action needed) ────────────────────────
