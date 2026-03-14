@@ -3,14 +3,16 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  CheckCircle2, Clock, AlertTriangle,
-  Building2, Phone, MapPin, Zap, Calendar, Pill,
+  CheckCircle2, Clock, AlertTriangle, AlertCircle, Loader2,
+  Zap, Calendar, Pill,
 } from 'lucide-react'
 import Navigation from '@/components/Navigation'
 import { getState, updateWorkflow } from '@/lib/storage'
 import type { AppState, Medication, Pharmacy, Workflow, WorkflowStatus } from '@/lib/types'
 
-// needs_approval → treat as scheduled (no manual approval required)
+type MedStatus = 'ready_for_pickup' | 'refill_in_progress' | 'upcoming' | 'no_refills_pharmacy' | 'no_refills_user' | 'none'
+
+// needs_approval → treat as scheduled for generic card use
 function displayStatus(w: Workflow): WorkflowStatus {
   if (w.status === 'needs_approval') return 'scheduled'
   if (w.status === 'in_progress' && !w.callId) return 'scheduled'
@@ -31,6 +33,59 @@ function getMostRelevantWorkflow(workflows: Workflow[], medicationId: string): W
   })[0]
 }
 
+function getMedStatus(workflow: Workflow | null): MedStatus {
+  if (!workflow) return 'none'
+  const notes = (workflow.notes ?? '').toLowerCase()
+  const { status, callId } = workflow
+  if (status === 'in_progress' && callId) return 'refill_in_progress'
+  if (status === 'completed') {
+    if (notes.includes('ready for pickup')) return 'ready_for_pickup'
+    if (notes.includes('reauthorization') || notes.includes('prescriber') || notes.includes('on hold'))
+      return 'no_refills_pharmacy'
+    return 'upcoming'
+  }
+  if (status === 'failed') {
+    if (notes.includes('reauthorization') || notes.includes('prescriber') || notes.includes('on hold'))
+      return 'no_refills_pharmacy'
+    return 'no_refills_user'
+  }
+  return 'upcoming'
+}
+
+function MedStatusCircle({ medStatus }: { medStatus: MedStatus }) {
+  if (medStatus === 'ready_for_pickup') return (
+    <div className="w-9 h-9 rounded-full bg-teal-50 border-2 border-teal-200 flex items-center justify-center shrink-0">
+      <CheckCircle2 className="w-4 h-4 text-teal-500" />
+    </div>
+  )
+  if (medStatus === 'refill_in_progress') return (
+    <div className="w-9 h-9 rounded-full bg-green-50 border-2 border-green-200 flex items-center justify-center shrink-0">
+      <Loader2 className="w-4 h-4 text-green-500 animate-spin" />
+    </div>
+  )
+  if (medStatus === 'upcoming') return (
+    <div className="w-9 h-9 rounded-full bg-blue-50 border-2 border-blue-200 flex items-center justify-center shrink-0">
+      <Clock className="w-4 h-4 text-blue-500" />
+    </div>
+  )
+  if (medStatus === 'no_refills_pharmacy') return (
+    <div className="w-9 h-9 rounded-full bg-amber-50 border-2 border-amber-200 flex items-center justify-center shrink-0">
+      <AlertCircle className="w-4 h-4 text-amber-500" />
+    </div>
+  )
+  if (medStatus === 'no_refills_user') return (
+    <div className="w-9 h-9 rounded-full bg-red-50 border-2 border-red-200 flex items-center justify-center shrink-0">
+      <AlertTriangle className="w-4 h-4 text-red-500" />
+    </div>
+  )
+  return (
+    <div className="w-9 h-9 rounded-full bg-slate-50 border-2 border-slate-100 flex items-center justify-center shrink-0">
+      <Clock className="w-4 h-4 text-slate-300" />
+    </div>
+  )
+}
+
+// StatusCircle kept for generic workflow cards (appointments, ad hoc)
 function StatusCircle({ status }: { status: WorkflowStatus | 'none' }) {
   if (status === 'completed') return (
     <div className="w-9 h-9 rounded-full bg-teal-50 border-2 border-teal-200 flex items-center justify-center shrink-0">
@@ -49,7 +104,7 @@ function StatusCircle({ status }: { status: WorkflowStatus | 'none' }) {
   )
   return (
     <div className="w-9 h-9 rounded-full bg-blue-50 border-2 border-blue-200 flex items-center justify-center shrink-0">
-      <Clock className={`w-4 h-4 text-blue-500 ${status === 'in_progress' ? 'animate-pulse' : ''}`} />
+      <Clock className="w-4 h-4 text-blue-500" />
     </div>
   )
 }
@@ -65,32 +120,20 @@ function RunNowButton({ workflowId, isFailed, onTrigger }: {
   )
 }
 
-function getStatusHeadline(workflow: Workflow | null, medication: Medication, status: WorkflowStatus | 'none'): string {
-  if (!workflow || status === 'none') return 'No Refill Scheduled'
-  const notes = workflow.notes?.toLowerCase() ?? ''
-  if (status === 'in_progress') return 'Amphelo Currently Calling Pharmacy'
-  if (status === 'completed') {
-    if (notes.includes('ready for pickup')) return 'Ready for Pickup'
-    if (notes.includes('out of refills') || notes.includes('reauthorization')) return 'Awaiting Prescription Renewal'
-    return 'Refill Confirmed'
+function getMedHeadline(medStatus: MedStatus, medication: Medication): { text: string; color: string } {
+  if (medStatus === 'ready_for_pickup')    return { text: 'Refill Ready for Pickup',                      color: 'text-teal-700' }
+  if (medStatus === 'refill_in_progress') return { text: 'Refill in Progress',                             color: 'text-green-700' }
+  if (medStatus === 'no_refills_pharmacy')return { text: 'No more refills — pharmacy contacted prescriber', color: 'text-amber-700' }
+  if (medStatus === 'no_refills_user')    return { text: 'No more refills — user action needed',            color: 'text-red-600' }
+  if (medStatus === 'none')               return { text: 'No Refill Scheduled',                             color: 'text-slate-400' }
+  // upcoming
+  const refill = nextRefillDate(medication)
+  if (refill) {
+    const days = Math.ceil((refill.getTime() - Date.now()) / 86400000)
+    const dueStr = days <= 0 ? 'now' : days === 1 ? 'tomorrow' : `in ${days} days`
+    return { text: `Refill to be confirmed · Due ${dueStr}`, color: 'text-blue-700' }
   }
-  if (status === 'failed') {
-    if (notes.includes('out of refills')) return 'Out of Refills — Pharmacy Contacting Doctor'
-    if (notes.includes('out of stock')) return 'Out of Stock — Pharmacy Working on It'
-    if (notes.includes('no pharmacy phone')) return 'Action Needed — No Pharmacy Phone on File'
-    return 'Action Needed'
-  }
-  if (status === 'scheduled') {
-    const nextRefill = nextRefillDate(medication)
-    if (nextRefill) {
-      const days = Math.ceil((nextRefill.getTime() - Date.now()) / 86400000)
-      if (days <= 0) return 'Refill Due Now'
-      if (days === 1) return 'Refill Due Tomorrow'
-      return `Refill Due in ${days} Days`
-    }
-    return 'Refill Scheduled'
-  }
-  return 'Pending'
+  return { text: 'Refill to be confirmed', color: 'text-blue-700' }
 }
 
 function nextRefillDate(medication: Medication): Date | null {
@@ -110,19 +153,14 @@ function MedicationCard({ medication, workflow, pharmacy, onTrigger }: {
   pharmacy: Pharmacy | null
   onTrigger: (id: string) => void
 }) {
-  const status = workflow ? displayStatus(workflow) : 'none'
-  const headline = getStatusHeadline(workflow, medication, status)
+  const medStatus = getMedStatus(workflow)
+  const { text: headline, color: headlineColor } = getMedHeadline(medStatus, medication)
   const refillDate = nextRefillDate(medication)
-
-  const headlineColor =
-    status === 'completed' ? 'text-teal-700' :
-    status === 'failed'    ? 'text-red-600'  :
-    status === 'none'      ? 'text-slate-400' :
-    'text-slate-900'
+  const wfStatus = workflow ? displayStatus(workflow) : 'none'
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-3 hover:shadow-sm hover:border-slate-300 transition-all">
-      <StatusCircle status={status as WorkflowStatus | 'none'} />
+      <MedStatusCircle medStatus={medStatus} />
       <div className="flex-1 min-w-0">
 
         {/* Line 1: medication name (bold) + dosage (light grey) */}
@@ -131,29 +169,27 @@ function MedicationCard({ medication, workflow, pharmacy, onTrigger }: {
           <span className="font-normal text-slate-400 ml-1.5">{medication.dosage}</span>
         </p>
 
-        {/* Line 2: status headline (bold, colored) */}
+        {/* Line 2: 5-state status headline */}
         <p className={`text-sm font-bold mt-1 leading-tight ${headlineColor}`}>{headline}</p>
 
-        {/* Date details: Next Refill + Amphelo action */}
-        {(refillDate || workflow?.scheduledAt) && (
-          <div className="mt-2 space-y-0.5">
-            {refillDate && (
-              <p className="text-xs text-slate-500">
-                <span className="font-medium">Next Refill:</span> {fmtDate(refillDate)}
-              </p>
-            )}
-            {workflow && status === 'scheduled' && workflow.scheduledAt && (
-              <p className="text-xs text-slate-500">
-                <span className="font-medium">Amphelo to confirm with pharmacy:</span> {fmtDate(workflow.scheduledAt)}
-              </p>
-            )}
-            {workflow?.completedAt && (
-              <p className="text-xs text-slate-500">
-                <span className="font-medium">Last action:</span> {fmtDate(workflow.completedAt)}
-              </p>
-            )}
-          </div>
-        )}
+        {/* Date details */}
+        <div className="mt-2 space-y-0.5">
+          {refillDate && medStatus === 'upcoming' && (
+            <p className="text-xs text-slate-500">
+              <span className="font-medium">Next Refill:</span> {fmtDate(refillDate)}
+            </p>
+          )}
+          {workflow && wfStatus === 'scheduled' && workflow.scheduledAt && (
+            <p className="text-xs text-slate-500">
+              <span className="font-medium">Amphelo to confirm with pharmacy:</span> {fmtDate(workflow.scheduledAt)}
+            </p>
+          )}
+          {workflow?.completedAt && (
+            <p className="text-xs text-slate-500">
+              <span className="font-medium">Last action:</span> {fmtDate(workflow.completedAt)}
+            </p>
+          )}
+        </div>
 
         {/* Refills remaining */}
         {medication.refillsRemaining !== undefined && (
@@ -169,17 +205,18 @@ function MedicationCard({ medication, workflow, pharmacy, onTrigger }: {
           </p>
         )}
 
-        {/* Notes (failures / completion details) */}
+        {/* Notes */}
         {workflow?.notes && (
           <p className={`text-xs mt-2 rounded-lg px-3 py-1.5 leading-snug ${
-            status === 'failed'    ? 'text-red-600 bg-red-50 border border-red-100' :
-            status === 'completed' ? 'text-teal-700 bg-teal-50 border border-teal-100' :
+            medStatus === 'no_refills_user'     ? 'text-red-600 bg-red-50 border border-red-100' :
+            medStatus === 'no_refills_pharmacy' ? 'text-amber-700 bg-amber-50 border border-amber-100' :
+            medStatus === 'ready_for_pickup'    ? 'text-teal-700 bg-teal-50 border border-teal-100' :
             'text-slate-600 bg-slate-50 border border-slate-100'
           }`}>{workflow.notes}</p>
         )}
 
-        {workflow && (status === 'scheduled' || status === 'failed') && (
-          <RunNowButton workflowId={workflow.id} isFailed={status === 'failed'} onTrigger={onTrigger} />
+        {workflow && (wfStatus === 'scheduled' || wfStatus === 'failed') && (
+          <RunNowButton workflowId={workflow.id} isFailed={wfStatus === 'failed'} onTrigger={onTrigger} />
         )}
       </div>
     </div>
