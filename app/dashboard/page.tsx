@@ -3,20 +3,35 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  CheckCircle2, Clock, AlertTriangle, Loader2,
-  Pill, Building2, Phone, Zap, ArrowRight,
-  Calendar, RefreshCw,
+  CheckCircle2, Clock, AlertTriangle,
+  Building2, Phone, MapPin, Zap, Calendar, Pill,
 } from 'lucide-react'
 import Navigation from '@/components/Navigation'
 import { getState, updateWorkflow } from '@/lib/storage'
-import type { AppState, Workflow, WorkflowStatus } from '@/lib/types'
+import type { AppState, Medication, Pharmacy, Workflow, WorkflowStatus } from '@/lib/types'
 
+// needs_approval → treat as scheduled (no manual approval required)
 function displayStatus(w: Workflow): WorkflowStatus {
+  if (w.status === 'needs_approval') return 'scheduled'
   if (w.status === 'in_progress' && !w.callId) return 'scheduled'
   return w.status
 }
 
-function StatusCircle({ status }: { status: WorkflowStatus }) {
+// For each medication, pick the most relevant current recurring workflow
+function getMostRelevantWorkflow(workflows: Workflow[], medicationId: string): Workflow | null {
+  const candidates = workflows.filter(w => w.medicationId === medicationId && w.isRecurring)
+  if (candidates.length === 0) return null
+  const priority: Record<WorkflowStatus, number> = {
+    in_progress: 5, failed: 4, needs_approval: 3, scheduled: 2, completed: 1,
+  }
+  return candidates.sort((a, b) => {
+    const diff = (priority[b.status] ?? 0) - (priority[a.status] ?? 0)
+    if (diff !== 0) return diff
+    return new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
+  })[0]
+}
+
+function StatusCircle({ status }: { status: WorkflowStatus | 'none' }) {
   if (status === 'completed') return (
     <div className="w-9 h-9 rounded-full bg-teal-50 border-2 border-teal-200 flex items-center justify-center shrink-0">
       <CheckCircle2 className="w-4 h-4 text-teal-500" />
@@ -27,7 +42,11 @@ function StatusCircle({ status }: { status: WorkflowStatus }) {
       <AlertTriangle className="w-4 h-4 text-red-500" />
     </div>
   )
-  // scheduled, in_progress, needs_approval
+  if (status === 'none') return (
+    <div className="w-9 h-9 rounded-full bg-slate-50 border-2 border-slate-100 flex items-center justify-center shrink-0">
+      <Clock className="w-4 h-4 text-slate-300" />
+    </div>
+  )
   return (
     <div className="w-9 h-9 rounded-full bg-blue-50 border-2 border-blue-200 flex items-center justify-center shrink-0">
       <Clock className={`w-4 h-4 text-blue-500 ${status === 'in_progress' ? 'animate-pulse' : ''}`} />
@@ -35,41 +54,104 @@ function StatusCircle({ status }: { status: WorkflowStatus }) {
   )
 }
 
-function StatusItem({ w, onApprove, onTrigger }: {
-  w: Workflow
-  onApprove: (id: string) => void
+function RunNowButton({ workflowId, isFailed, onTrigger }: {
+  workflowId: string; isFailed: boolean; onTrigger: (id: string) => void
+}) {
+  return (
+    <button onClick={() => onTrigger(workflowId)}
+      className="mt-2.5 flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-200 transition-colors">
+      <Zap className="w-3 h-3" />{isFailed ? 'Retry' : 'Run now'}
+    </button>
+  )
+}
+
+// Section 1: one card per medication
+function MedicationCard({ medication, workflow, pharmacy, onTrigger }: {
+  medication: Medication
+  workflow: Workflow | null
+  pharmacy: Pharmacy | null
   onTrigger: (id: string) => void
 }) {
+  const status = workflow ? displayStatus(workflow) : 'none'
+  const actionDate = workflow?.completedAt ?? workflow?.scheduledAt
+  const actionLabel = workflow?.completedAt ? 'Last action' : 'Scheduled'
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-3 hover:shadow-sm hover:border-slate-300 transition-all">
+      <StatusCircle status={status as WorkflowStatus | 'none'} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-slate-900">{medication.name}</p>
+        <p className="text-xs text-slate-400 mt-0.5">{medication.dosage}</p>
+
+        {workflow?.description && (
+          <p className="text-xs text-slate-600 mt-1.5 leading-snug">{workflow.description}</p>
+        )}
+        {!workflow && (
+          <p className="text-xs text-slate-400 mt-1.5 italic">No refill scheduled</p>
+        )}
+
+        {/* Pharmacy details */}
+        {pharmacy && (
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <Building2 className="w-3 h-3 shrink-0" />{pharmacy.name}
+            </div>
+            {pharmacy.address && (
+              <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                <MapPin className="w-3 h-3 shrink-0" />{pharmacy.address}
+              </div>
+            )}
+            {pharmacy.phone && (
+              <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                <Phone className="w-3 h-3 shrink-0" />{pharmacy.phone}
+              </div>
+            )}
+          </div>
+        )}
+
+        {actionDate && (
+          <p className="text-xs text-slate-400 mt-1.5">
+            {actionLabel}: {new Date(actionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </p>
+        )}
+
+        {workflow?.notes && (
+          <p className={`text-xs mt-2 rounded-lg px-3 py-1.5 leading-snug ${
+            status === 'failed'    ? 'text-red-600 bg-red-50 border border-red-100' :
+            status === 'completed' ? 'text-teal-700 bg-teal-50 border border-teal-100' :
+            'text-slate-600 bg-slate-50 border border-slate-100'
+          }`}>{workflow.notes}</p>
+        )}
+
+        {workflow && (status === 'scheduled' || status === 'failed') && (
+          <RunNowButton workflowId={workflow.id} isFailed={status === 'failed'} onTrigger={onTrigger} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Section 2 + 3: generic status card for appointments and ad hoc
+function StatusCard({ w, onTrigger }: { w: Workflow; onTrigger: (id: string) => void }) {
   const status = displayStatus(w)
+  const actionDate = w.completedAt ?? w.scheduledAt
+  const actionLabel = w.completedAt ? 'Last action' : 'Scheduled'
+
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-4 flex gap-3 hover:shadow-sm hover:border-slate-300 transition-all">
       <StatusCircle status={status} />
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-semibold text-slate-900 leading-snug">{w.title}</p>
-          {w.isRecurring && (
-            <span className="inline-flex items-center gap-1 text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full shrink-0">
-              <RefreshCw className="w-2.5 h-2.5" />Recurring
-            </span>
-          )}
-        </div>
+        <p className="text-sm font-bold text-slate-900 leading-snug">{w.title}</p>
         {w.description && (
           <p className="text-xs text-slate-500 mt-0.5 leading-snug">{w.description}</p>
         )}
-        {(w.pharmacyName || w.pharmacyPhone) && (
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
-            {w.pharmacyName && (
-              <span className="flex items-center gap-1 text-xs text-slate-400">
-                <Building2 className="w-3 h-3" />{w.pharmacyName}
-              </span>
-            )}
-            {w.pharmacyPhone && (
-              <span className="flex items-center gap-1 text-xs text-slate-400">
-                <Phone className="w-3 h-3" />{w.pharmacyPhone}
-              </span>
-            )}
-          </div>
+
+        {actionDate && (
+          <p className="text-xs text-slate-400 mt-1.5">
+            {actionLabel}: {new Date(actionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </p>
         )}
+
         {w.notes && (
           <p className={`text-xs mt-2 rounded-lg px-3 py-1.5 leading-snug ${
             status === 'failed'    ? 'text-red-600 bg-red-50 border border-red-100' :
@@ -77,21 +159,9 @@ function StatusItem({ w, onApprove, onTrigger }: {
             'text-slate-600 bg-slate-50 border border-slate-100'
           }`}>{w.notes}</p>
         )}
-        {(status === 'needs_approval' || status === 'scheduled' || status === 'failed') && (
-          <div className="mt-2.5 flex gap-2">
-            {status === 'needs_approval' && (
-              <button onClick={() => onApprove(w.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors">
-                Approve <ArrowRight className="w-3 h-3" />
-              </button>
-            )}
-            {(status === 'scheduled' || status === 'failed') && (
-              <button onClick={() => onTrigger(w.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-200 transition-colors">
-                <Zap className="w-3 h-3" />{status === 'failed' ? 'Retry' : 'Run now'}
-              </button>
-            )}
-          </div>
+
+        {(status === 'scheduled' || status === 'failed') && (
+          <RunNowButton workflowId={w.id} isFailed={status === 'failed'} onTrigger={onTrigger} />
         )}
       </div>
     </div>
@@ -99,13 +169,15 @@ function StatusItem({ w, onApprove, onTrigger }: {
 }
 
 function SectionHeader({ icon: Icon, iconColor, title, count }: {
-  icon: React.ElementType; iconColor: string; title: string; count: number
+  icon: React.ElementType; iconColor: string; title: string; count?: number
 }) {
   return (
     <div className="flex items-center gap-2 mb-3">
       <Icon className={`w-4 h-4 ${iconColor}`} />
       <h2 className="text-base font-bold text-slate-900">{title}</h2>
-      <span className="text-xs text-slate-400 ml-auto">{count} item{count !== 1 ? 's' : ''}</span>
+      {count !== undefined && (
+        <span className="text-xs text-slate-400 ml-auto">{count} item{count !== 1 ? 's' : ''}</span>
+      )}
     </div>
   )
 }
@@ -122,7 +194,6 @@ function DashboardContent() {
 
   const refresh = () => setStateLocal(getState())
 
-  // Poll in-progress workflows
   useEffect(() => {
     const interval = setInterval(async () => {
       const s = getState()
@@ -145,11 +216,6 @@ function DashboardContent() {
     }, 10000)
     return () => clearInterval(interval)
   }, [])
-
-  const handleApprove = (id: string) => {
-    updateWorkflow(id, { status: 'scheduled' })
-    refresh()
-  }
 
   const handleTrigger = async (id: string) => {
     if (!state) return
@@ -195,12 +261,9 @@ function DashboardContent() {
     </div>
   )
 
-  const { profile, workflows } = state
-
-  // Categorize by content type
-  const prescriptions = workflows.filter(w => w.isRecurring && w.type !== 'custom')
-  const appointments  = workflows.filter(w => w.type === 'custom' && w.isRecurring)
-  const adHoc         = workflows.filter(w => !w.isRecurring)
+  const { profile, workflows, medications, pharmacies } = state
+  const appointments = workflows.filter(w => w.type === 'custom' && w.isRecurring)
+  const adHoc        = workflows.filter(w => !w.isRecurring)
 
   const greeting = () => {
     const h = new Date().getHours()
@@ -211,7 +274,6 @@ function DashboardContent() {
     <div className="flex min-h-screen bg-slate-50">
       <Navigation patientName={profile?.name} />
       <main className="flex-1 overflow-auto">
-        {/* Header */}
         <div className="bg-white border-b border-slate-100 px-8 py-7">
           <h1 className="text-2xl font-bold text-slate-900">{greeting()}, {profile?.name?.split(' ')[0]} 👋</h1>
           <p className="text-sm text-slate-400 mt-1">
@@ -221,49 +283,62 @@ function DashboardContent() {
 
         <div className="px-8 py-7 space-y-8 max-w-3xl">
 
-          {/* Section 1: Prescriptions & Device Pickups */}
-          {prescriptions.length > 0 && (
+          {/* Section 1: one card per medication/device */}
+          {medications.length > 0 && (
             <section>
-              <SectionHeader icon={Pill} iconColor="text-blue-500" title="Prescriptions & Device Pickups" count={prescriptions.length} />
+              <SectionHeader icon={Pill} iconColor="text-blue-500" title="Prescriptions & Device Pickups" count={medications.length} />
               <div className="space-y-2.5">
-                {prescriptions.map(w => (
-                  <StatusItem key={w.id} w={w} onApprove={handleApprove} onTrigger={handleTrigger} />
-                ))}
+                {medications.map(med => {
+                  const workflow = getMostRelevantWorkflow(workflows, med.id)
+                  const pharmacy = pharmacies.find(p => p.id === (workflow?.pharmacyId ?? med.pharmacyId)) ?? null
+                  return (
+                    <MedicationCard
+                      key={med.id}
+                      medication={med}
+                      workflow={workflow}
+                      pharmacy={pharmacy}
+                      onTrigger={handleTrigger}
+                    />
+                  )
+                })}
               </div>
             </section>
           )}
 
-          {/* Section 2: Appointments */}
-          {appointments.length > 0 && (
-            <section>
-              <SectionHeader icon={Calendar} iconColor="text-violet-500" title="Appointments" count={appointments.length} />
+          {/* Section 2: Appointments — always visible */}
+          <section>
+            <SectionHeader icon={Calendar} iconColor="text-violet-500" title="Appointments" count={appointments.length} />
+            {appointments.length > 0 ? (
               <div className="space-y-2.5">
-                {appointments.map(w => (
-                  <StatusItem key={w.id} w={w} onApprove={handleApprove} onTrigger={handleTrigger} />
-                ))}
+                {appointments.map(w => <StatusCard key={w.id} w={w} onTrigger={handleTrigger} />)}
               </div>
-            </section>
-          )}
+            ) : (
+              <div className="bg-white border border-dashed border-slate-200 rounded-xl px-4 py-5 text-center">
+                <p className="text-xs text-slate-400">No upcoming appointments.</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Use <span className="font-medium text-slate-600">Ad Hoc Requests</span> to schedule one.
+                </p>
+              </div>
+            )}
+          </section>
 
-          {/* Section 3: Current Ad Hoc Requests */}
+          {/* Section 3: Ad Hoc Requests */}
           {adHoc.length > 0 && (
             <section>
               <SectionHeader icon={Zap} iconColor="text-violet-400" title="Current Ad Hoc Requests" count={adHoc.length} />
               <div className="space-y-2.5">
-                {adHoc.map(w => (
-                  <StatusItem key={w.id} w={w} onApprove={handleApprove} onTrigger={handleTrigger} />
-                ))}
+                {adHoc.map(w => <StatusCard key={w.id} w={w} onTrigger={handleTrigger} />)}
               </div>
             </section>
           )}
 
-          {workflows.length === 0 && (
+          {medications.length === 0 && appointments.length === 0 && adHoc.length === 0 && (
             <div className="text-center py-20">
               <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Pill className="w-7 h-7 text-slate-300" />
               </div>
-              <p className="text-sm font-semibold text-slate-500">No workflows yet</p>
-              <p className="text-xs text-slate-400 mt-1">Complete onboarding to generate your first workflows.</p>
+              <p className="text-sm font-semibold text-slate-500">No data yet</p>
+              <p className="text-xs text-slate-400 mt-1">Complete onboarding to get started.</p>
             </div>
           )}
 
