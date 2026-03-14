@@ -130,7 +130,8 @@ function getMedHeadline(medStatus: MedStatus, medication: Medication): { text: s
   const refill = nextRefillDate(medication)
   if (refill) {
     const days = Math.ceil((refill.getTime() - Date.now()) / 86400000)
-    const dueStr = days <= 0 ? 'now' : days === 1 ? 'tomorrow' : `in ${days} days`
+    if (days <= 0) return { text: 'Refill to be confirmed', color: 'text-blue-700' }
+    const dueStr = days === 1 ? 'tomorrow' : `in ${days} days`
     return { text: `Refill to be confirmed · Due ${dueStr}`, color: 'text-blue-700' }
   }
   return { text: 'Refill to be confirmed', color: 'text-blue-700' }
