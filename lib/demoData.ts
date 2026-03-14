@@ -28,7 +28,7 @@ export function loadDemoState() {
       {
         id: 'med-1', name: 'Humalog', dosage: '100u/mL KwikPen',
         frequency: 'Daily', prescriptionNumber: 'Rx #4421089',
-        refillsRemaining: 3, lastFilled: ts(-26), daysSupply: 30, pharmacyId: CVS,
+        refillsRemaining: 3, lastFilled: ts(-23), daysSupply: 30, pharmacyId: CVS,
       },
       {
         id: 'med-2', name: 'Tresiba', dosage: '100u/mL FlexTouch',
@@ -38,7 +38,7 @@ export function loadDemoState() {
       {
         id: 'med-3', name: 'Dexcom G7 Sensor', dosage: '10-pack',
         frequency: 'Every 10 days', prescriptionNumber: 'Rx #8813047',
-        refillsRemaining: 5, lastFilled: ts(-9), daysSupply: 10, pharmacyId: WG,
+        refillsRemaining: 5, lastFilled: ts(-4), daysSupply: 10, pharmacyId: WG,
       },
       {
         id: 'med-4', name: 'Omnipod 5 Pods', dosage: '10-pack',
@@ -85,7 +85,7 @@ export function loadDemoState() {
         description: 'Monthly recurring refill — confirmed ready 3 days before pickup.',
         medicationId: 'med-1', medicationName: 'Humalog',
         pharmacyId: CVS, pharmacyName: 'CVS Pharmacy', pharmacyPhone: '(415) 842-7700',
-        status: 'completed', scheduledAt: ts(1), completedAt: ts(1, 10, 8),
+        status: 'completed', scheduledAt: ts(4), completedAt: ts(4, 10, 8),
         notes: 'Confirmed: Humalog 100u/mL KwikPen (Rx #4421089) is ready for pickup at CVS Pharmacy. 3 refills remaining.',
         callId: 'demo-call-4', isRecurring: true, recurringInterval: 'monthly',
         createdAt: ts(-2),
@@ -95,7 +95,7 @@ export function loadDemoState() {
         description: '10-day sensor supply — confirmed ready 3 days before pickup.',
         medicationId: 'med-3', medicationName: 'Dexcom G7 Sensor',
         pharmacyId: WG, pharmacyName: 'Walgreens', pharmacyPhone: '(415) 931-4450',
-        status: 'completed', scheduledAt: ts(-2), completedAt: ts(-2, 9, 31),
+        status: 'completed', scheduledAt: ts(3), completedAt: ts(3, 9, 31),
         notes: 'Confirmed: Dexcom G7 Sensor 10-pack (Rx #8813047) is ready for pickup at Walgreens. 5 refills remaining.',
         callId: 'demo-call-5', isRecurring: true, recurringInterval: 'monthly',
         createdAt: ts(-3),
