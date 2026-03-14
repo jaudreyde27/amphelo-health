@@ -31,5 +31,7 @@ jobs:
           git push origin main
 
       - name: Trigger Vercel deployment
-        if: ${{ secrets.VERCEL_DEPLOY_HOOK != '' }}
-        run: curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
+        run: |
+          if [ -n "${{ secrets.VERCEL_DEPLOY_HOOK }}" ]; then
+            curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
+          fi
