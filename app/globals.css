@@ -123,3 +123,50 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Amphelo brand accent = sky blue */
+:root {
+  --accent: oklch(0.746 0.14 221.6);       /* sky-400 #38bdf8 */
+  --accent-foreground: oklch(1 0 0);        /* white */
+}
+
+/* Custom utility classes */
+.cta-button {
+  display: inline-block;
+  background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+  color: #fff;
+  font-weight: 600;
+  padding: 0.75rem 1.75rem;
+  border-radius: 1rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+}
+
+.cta-button:hover {
+  background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+  box-shadow: 0 4px 16px rgba(14, 165, 233, 0.4);
+  transform: translateY(-1px);
+}
+
+.warm-section {
+  background: linear-gradient(180deg, #fdfcfa 0%, #faf9f6 100%);
+}
+
+.tagline {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.gradient-bg {
+  background: linear-gradient(145deg, #f0f9ff 0%, #e0f2fe 60%, #f0fdf4 100%);
+}
+
+.accent-text {
+  color: #38bdf8;
+}
+
+.accent-current {
+  color: #38bdf8;
+}
