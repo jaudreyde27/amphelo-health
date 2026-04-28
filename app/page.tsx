@@ -255,7 +255,7 @@ export default function Home() {
                 </li>
               </ul>
 
-              <p className="text-base sm:text-lg text-gray-900 font-semibold mb-6">$8/request. No strings attached.</p>
+              <p className="text-base sm:text-lg text-gray-900 font-semibold mb-6"><span className="line-through text-gray-400">$8/request.</span> Free for beta users. Just sign up.</p>
               <Link href="/free-trial" className="cta-button inline-block text-center w-full">
                 Sign up for our waitlist now
               </Link>
@@ -287,7 +287,7 @@ export default function Home() {
                 </li>
               </ul>
 
-              <p className="text-base sm:text-lg font-semibold mb-6" style={{color: '#7a6830'}}>$35/month. No strings attached.</p>
+              <p className="text-base sm:text-lg font-semibold mb-6" style={{color: '#7a6830'}}><span className="line-through text-gray-400">$35/month.</span> Free for beta users. Just sign up.</p>
               <Link href="/free-trial" className="inline-block text-center w-full py-3 px-8 rounded-2xl font-semibold transition-all shadow-sm hover:shadow-md" style={{background: 'linear-gradient(135deg, #c9a84c 0%, #e8d48a 50%, #c9a84c 100%)', color: '#3d2e00'}}>
                 Sign up for our waitlist now
               </Link>
