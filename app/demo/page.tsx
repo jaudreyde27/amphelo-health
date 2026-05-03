@@ -583,18 +583,15 @@ export default function IntakePage() {
             </div>
           )}
 
-          {/* Step 10: Care map + CTA */}
+          {/* Step 10: CTA */}
           {step === 10 && (
-            <div className="space-y-4">
-              <CareMapSummary name={info.fullName.split(' ')[0] || 'there'} />
-              <div className="flex justify-center pt-2">
-                <button
-                  onClick={() => router.push('/demo/dashboard')}
-                  className="bg-blue-600 text-white rounded-xl px-8 py-3 text-sm font-semibold hover:bg-blue-700 flex items-center gap-2 shadow-md"
-                >
-                  Open My Dashboard <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => router.push('/demo/dashboard')}
+                className="bg-blue-600 text-white rounded-xl px-8 py-3 text-sm font-semibold hover:bg-blue-700 flex items-center gap-2 shadow-md"
+              >
+                Open My Dashboard <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           )}
 
@@ -638,29 +635,3 @@ function TextConfirmInput({
   )
 }
 
-function CareMapSummary({ name }: { name: string }) {
-  return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-          <Heart className="w-3 h-3 text-white fill-white" />
-        </div>
-        <span className="font-semibold text-gray-900 text-sm">{name} — Care Map</span>
-        <span className="ml-auto bg-green-100 text-green-700 text-xs px-2.5 py-1 rounded-full font-medium">Complete</span>
-      </div>
-      <div className="bg-gray-50 rounded-xl p-4 font-mono text-xs text-gray-700 leading-6 space-y-0.5">
-        <div className="font-semibold text-gray-900">{name} (Type 1 Diabetes)</div>
-        <div className="ml-2">├── Humalog 10mL Vial <span className="text-gray-400">(every 4 weeks)</span></div>
-        <div className="ml-6">├── Pickup refill → <span className="text-blue-600">CVS Pharmacy</span></div>
-        <div className="ml-6">└── Refill request → <span className="text-blue-600">Dr. Anita Patel</span></div>
-        <div className="ml-2">├── Dexcom G7 CGM</div>
-        <div className="ml-6">└── Sensor replacement → <span className="text-blue-600">Dexcom Support (1-888-738-3646)</span></div>
-        <div className="ml-2">├── Care Team</div>
-        <div className="ml-6">├── Endocrinology → <span className="text-blue-600">Dr. Anita Patel</span></div>
-        <div className="ml-6">└── Primary Care → <span className="text-blue-600">Dr. James Liu</span></div>
-        <div className="ml-2">└── Coverage</div>
-        <div className="ml-6">└── Approvals → <span className="text-blue-600">Blue Shield PPO</span></div>
-      </div>
-    </div>
-  )
-}
