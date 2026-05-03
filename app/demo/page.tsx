@@ -2,29 +2,33 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Heart, Plus, ChevronRight } from 'lucide-react'
+import { Heart, Plus, ChevronRight, ChevronDown } from 'lucide-react'
 
-interface Msg {
-  id: string
-  role: 'amphelo' | 'user'
-  content: string
-}
-
-interface Rx {
-  name: string
-  format: string
-  frequency: string
-  lastFilled: string
-}
-
-interface Device {
-  type: string
-  brand: string
-  model: string
-  hasSupply: boolean
-}
+interface Msg { id: string; role: 'amphelo' | 'user'; content: string }
+interface PersonalInfo { fullName: string; dob: string; street: string; city: string; state: string; zip: string }
+interface Rx { name: string; format: string; frequency: string; lastFilled: string }
+interface Device { type: string; brand: string; model: string; hasSupply: boolean }
+interface PharmacyInfo { name: string; isChain: boolean | null; address: string; phone: string }
+interface InsuranceInfo { name: string; plan: string; group: string; phone: string }
 
 const DELAY = 1100
+const CONDITIONS = ['Type 1 Diabetes', 'Other']
+
+const INPUT_CLS = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
+const LABEL_CLS = 'text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1'
+const PRIMARY_BTN = 'bg-blue-600 text-white rounded-xl px-6 py-2.5 text-sm font-medium hover:bg-blue-700 flex items-center gap-2'
+const PRIMARY_BTN_PILL = 'bg-blue-600 text-white rounded-2xl px-5 py-2.5 text-sm font-medium hover:bg-blue-700'
+const SECONDARY_BTN_PILL = 'bg-white border border-gray-300 text-gray-700 rounded-2xl px-5 py-2.5 text-sm font-medium hover:bg-gray-50'
+
+function getDeviceServiceLine(brand: string): string {
+  const b = brand.toLowerCase()
+  if (b.includes('dexcom')) return '1-888-738-3646'
+  if (b.includes('omnipod') || b.includes('insulet')) return '1-800-591-3455'
+  if (b.includes('tandem')) return '1-877-801-6901'
+  if (b.includes('medtronic')) return '1-800-646-4633'
+  if (b.includes('abbott') || b.includes('freestyle') || b.includes('libre')) return '1-855-632-8658'
+  return ''
+}
 
 export default function IntakePage() {
   const router = useRouter()
@@ -34,20 +38,43 @@ export default function IntakePage() {
   const [isTyping, setIsTyping] = useState(false)
   const [step, setStep] = useState(-1)
 
-  const [nameVal, setNameVal] = useState('Audrey')
-  const [name, setName] = useState('')
+  // Personal info
+  const [info, setInfo] = useState<PersonalInfo>({
+    fullName: 'Audrey Chen', dob: '1992-06-14',
+    street: '742 Evergreen Terrace', city: 'San Francisco', state: 'CA', zip: '94102',
+  })
 
+  // Condition
+  const [conditionPhase, setConditionPhase] = useState<'yn' | 'dropdown'>('yn')
+  const [selectedCondition, setSelectedCondition] = useState('Type 1 Diabetes')
+
+  // Prescriptions
   const [rxList, setRxList] = useState<Rx[]>([
     { name: 'Humalog', format: '10mL Vial', frequency: 'Every 4 weeks', lastFilled: '2026-04-15' },
   ])
+
+  // Devices
   const [deviceList, setDeviceList] = useState<Device[]>([
     { type: 'CGM', brand: 'Dexcom', model: 'G7', hasSupply: false },
   ])
+  const [deviceServiceLine, setDeviceServiceLine] = useState('')
 
+  // Doctors
   const [endoVal, setEndoVal] = useState('Dr. Anita Patel (Endocrinology)')
   const [pcpVal, setPcpVal] = useState('Dr. James Liu (Primary Care)')
-  const [pharmacyVal, setPharmacyVal] = useState('CVS Pharmacy · 1420 Market St, San Francisco, CA')
-  const [insuranceVal, setInsuranceVal] = useState('Blue Shield PPO (Commercial)')
+
+  // Pharmacy
+  const [pharmacy, setPharmacy] = useState<PharmacyInfo>({
+    name: 'CVS Pharmacy', isChain: true,
+    address: '1420 Market St, San Francisco, CA 94102', phone: '(415) 842-7700',
+  })
+
+  // Insurance
+  const [primaryIns, setPrimaryIns] = useState<InsuranceInfo>({
+    name: 'Blue Shield PPO', plan: 'BSC-PPO-2024-001', group: 'GRP-88412', phone: '1-800-541-6765',
+  })
+  const [hasSecondary, setHasSecondary] = useState(false)
+  const [secondaryIns, setSecondaryIns] = useState<InsuranceInfo>({ name: '', plan: '', group: '', phone: '' })
 
   const addMsg = useCallback((role: 'amphelo' | 'user', content: string) => {
     setMsgs(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, role, content }])
@@ -69,7 +96,7 @@ export default function IntakePage() {
   useEffect(() => {
     const t = setTimeout(() => {
       ampheloSays(
-        "Hi there! I'm Amphelo, your personal T1D care coordinator. What's your name?",
+        "Hi there! I'm Amphelo, your personal care coordinator. Let's get you set up — I'll start with some basic information.",
         () => setStep(0)
       )
     }, 400)
@@ -82,14 +109,29 @@ export default function IntakePage() {
     ampheloSays(nextAmphelo, () => setStep(nextStep))
   }, [addMsg, ampheloSays])
 
-  const handleName = () => {
-    const n = nameVal.trim() || 'Audrey'
-    setName(n)
-    addMsg('user', n)
+  // ── Handlers ────────────────────────────────────────────────────────────
+
+  const handlePersonalInfo = () => {
+    const firstName = info.fullName.split(' ')[0] || 'there'
+    const summary = `${info.fullName} · DOB: ${info.dob} · ${info.street}, ${info.city}, ${info.state} ${info.zip}`
+    addMsg('user', summary)
     setStep(-1)
     ampheloSays(
-      `Nice to meet you, ${n}! Quick confirmation — do you have Type 1 Diabetes?`,
+      `Nice to meet you, ${firstName}! Quick question — do you manage a chronic condition that requires consistent access to care or medical devices?`,
       () => setStep(1)
+    )
+  }
+
+  const handleConditionYes = () => {
+    setConditionPhase('dropdown')
+  }
+
+  const handleConditionSelect = () => {
+    if (!selectedCondition) return
+    go(
+      `Yes — ${selectedCondition}`,
+      2,
+      `Got it. Now let's add your prescriptions — name, format (e.g. "10mL vial"), and refill frequency (e.g. "every 4 weeks").`
     )
   }
 
@@ -97,12 +139,53 @@ export default function IntakePage() {
     const summary = rxList
       .map(r => `${r.name} · ${r.format} · ${r.frequency} · last filled ${r.lastFilled}`)
       .join('\n')
-    go(summary, 3, 'Got it! Does your care involve any medical devices? (e.g. CGM, insulin pump, infusion pump)')
+    go(summary, 3, 'Does your care involve any medical devices? (e.g. CGM, insulin pump, infusion pump)')
   }
 
   const handleDeviceSubmit = () => {
     const summary = deviceList.map(d => `${d.type} · ${d.brand} · ${d.model}`).join('\n')
-    go(summary, 5, "Now let's map your care team. Who is your endocrinologist or diabetes specialist?")
+    const autoLine = getDeviceServiceLine(deviceList[0]?.brand || '')
+    setDeviceServiceLine(autoLine)
+    const brand = deviceList[0]?.brand || 'the manufacturer'
+    const model = deviceList[0]?.model ? ` ${deviceList[0].model}` : ''
+    addMsg('user', summary)
+    setStep(-1)
+    ampheloSays(
+      `Got it. What's the customer service number for ${brand}${model}? I'll reach out to them directly on your behalf whenever there's an issue.`,
+      () => setStep(5)
+    )
+  }
+
+  const handleDeviceServiceLine = () =>
+    go(deviceServiceLine, 6, "Now let's map your care team. Who is your endocrinologist or diabetes specialist?")
+
+  const handleEndo = () =>
+    go(endoVal, 7, 'And your primary care physician?')
+
+  const handlePcp = () =>
+    go(pcpVal, 8, 'Where do you get your prescriptions filled? Tell me about your pharmacy.')
+
+  const handlePharmacy = () => {
+    const { name, isChain, address, phone } = pharmacy
+    const summary = `${name}${isChain ? ' (chain)' : ''} · ${address} · ${phone}`
+    go(
+      summary,
+      9,
+      "Last step — insurance. Please list your primary insurance and secondary if applicable, including plan name, plan number, group number, and customer service number."
+    )
+  }
+
+  const handleInsurance = () => {
+    let summary = `Primary: ${primaryIns.name} · Plan #${primaryIns.plan} · Group #${primaryIns.group} · ${primaryIns.phone}`
+    if (hasSecondary && secondaryIns.name) {
+      summary += `\nSecondary: ${secondaryIns.name} · Plan #${secondaryIns.plan} · Group #${secondaryIns.group} · ${secondaryIns.phone}`
+    }
+    const firstName = info.fullName.split(' ')[0] || 'there'
+    go(
+      summary,
+      10,
+      `Perfect — your care map is complete, ${firstName}. I'll use this to proactively manage your care, handling refills, device issues, prior auths, and more before you ever have to think about them.`
+    )
   }
 
   const updateRx = (idx: number, field: keyof Rx, val: string) =>
@@ -116,6 +199,8 @@ export default function IntakePage() {
 
   const addDevice = () =>
     setDeviceList(prev => [...prev, { type: 'Insulin Pump', brand: 'Omnipod', model: 'Pod 5', hasSupply: false }])
+
+  // ── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] flex flex-col">
@@ -155,48 +240,86 @@ export default function IntakePage() {
               <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm border border-gray-100">
                 <div className="flex gap-1 items-center h-4">
                   {[0, 150, 300].map(d => (
-                    <span
-                      key={d}
-                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                      style={{ animationDelay: `${d}ms` }}
-                    />
+                    <span key={d} className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
                   ))}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Step 0: Name */}
+          {/* Step 0: Personal info */}
           {step === 0 && (
-            <div className="flex justify-end">
-              <div className="flex gap-2">
-                <input
-                  autoFocus
-                  value={nameVal}
-                  onChange={e => setNameVal(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleName()}
-                  placeholder="Your name..."
-                  className="border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                />
-                <button onClick={handleName} className="bg-blue-600 text-white rounded-xl px-4 py-2 hover:bg-blue-700">
-                  <ChevronRight className="w-4 h-4" />
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2 space-y-1">
+                  <label className={LABEL_CLS}>Full Name</label>
+                  <input autoFocus value={info.fullName} onChange={e => setInfo(p => ({ ...p, fullName: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && handlePersonalInfo()} placeholder="Audrey Chen" className={INPUT_CLS} />
+                </div>
+                <div className="space-y-1">
+                  <label className={LABEL_CLS}>Date of Birth</label>
+                  <input type="date" value={info.dob} onChange={e => setInfo(p => ({ ...p, dob: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && handlePersonalInfo()} className={INPUT_CLS} />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <label className={LABEL_CLS}>Street Address</label>
+                  <input value={info.street} onChange={e => setInfo(p => ({ ...p, street: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && handlePersonalInfo()} placeholder="742 Evergreen Terrace" className={INPUT_CLS} />
+                </div>
+                <div className="space-y-1">
+                  <label className={LABEL_CLS}>City</label>
+                  <input value={info.city} onChange={e => setInfo(p => ({ ...p, city: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && handlePersonalInfo()} placeholder="San Francisco" className={INPUT_CLS} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className={LABEL_CLS}>State</label>
+                    <input value={info.state} onChange={e => setInfo(p => ({ ...p, state: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && handlePersonalInfo()} placeholder="CA" className={INPUT_CLS} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className={LABEL_CLS}>ZIP</label>
+                    <input value={info.zip} onChange={e => setInfo(p => ({ ...p, zip: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && handlePersonalInfo()} placeholder="94102" className={INPUT_CLS} />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button onClick={handlePersonalInfo} className={PRIMARY_BTN}>
+                  Continue <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Step 1: T1D confirmation */}
-          {step === 1 && (
+          {/* Step 1: Condition yes/no → dropdown */}
+          {step === 1 && conditionPhase === 'yn' && (
             <div className="flex justify-end gap-2">
-              <button
-                onClick={() => go('Yes', 2, 'Understood. Now let\'s add your prescriptions — name, format (e.g. "10mL vial"), and refill frequency (e.g. "every 4 weeks").')}
-                className="bg-blue-600 text-white rounded-2xl px-5 py-2.5 text-sm font-medium hover:bg-blue-700"
-              >
-                Yes
-              </button>
-              <button className="bg-white border border-gray-300 text-gray-700 rounded-2xl px-5 py-2.5 text-sm font-medium hover:bg-gray-50">
-                No
-              </button>
+              <button autoFocus onClick={handleConditionYes} className={PRIMARY_BTN_PILL}>Yes</button>
+              <button className={SECONDARY_BTN_PILL}>No</button>
+            </div>
+          )}
+          {step === 1 && conditionPhase === 'dropdown' && (
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
+              <label className={LABEL_CLS}>Select your condition</label>
+              <div className="relative">
+                <select
+                  autoFocus
+                  value={selectedCondition}
+                  onChange={e => setSelectedCondition(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleConditionSelect()}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white pr-8"
+                >
+                  <option value="">Select condition...</option>
+                  {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+              <div className="flex justify-end">
+                <button onClick={handleConditionSelect} className={PRIMARY_BTN}>
+                  Confirm <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
 
@@ -206,40 +329,24 @@ export default function IntakePage() {
               {rxList.map((rx, i) => (
                 <div key={i} className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Medication name</label>
-                    <input
-                      value={rx.name}
-                      onChange={e => updateRx(i, 'name', e.target.value)}
-                      placeholder="Humalog"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    <label className={LABEL_CLS}>Medication name</label>
+                    <input autoFocus={i === 0} value={rx.name} onChange={e => updateRx(i, 'name', e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleRxSubmit()} placeholder="Humalog" className={INPUT_CLS} />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Format</label>
-                    <input
-                      value={rx.format}
-                      onChange={e => updateRx(i, 'format', e.target.value)}
-                      placeholder="10mL vial"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    <label className={LABEL_CLS}>Format</label>
+                    <input value={rx.format} onChange={e => updateRx(i, 'format', e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleRxSubmit()} placeholder="10mL vial" className={INPUT_CLS} />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Refill frequency</label>
-                    <input
-                      value={rx.frequency}
-                      onChange={e => updateRx(i, 'frequency', e.target.value)}
-                      placeholder="every 4 weeks"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    <label className={LABEL_CLS}>Refill frequency</label>
+                    <input value={rx.frequency} onChange={e => updateRx(i, 'frequency', e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleRxSubmit()} placeholder="every 4 weeks" className={INPUT_CLS} />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Date last picked up / received</label>
-                    <input
-                      type="date"
-                      value={rx.lastFilled}
-                      onChange={e => updateRx(i, 'lastFilled', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    <label className={LABEL_CLS}>Date last picked up / received</label>
+                    <input type="date" value={rx.lastFilled} onChange={e => updateRx(i, 'lastFilled', e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleRxSubmit()} className={INPUT_CLS} />
                   </div>
                 </div>
               ))}
@@ -249,28 +356,25 @@ export default function IntakePage() {
                 </button>
               )}
               <div className="flex justify-end">
-                <button
-                  onClick={handleRxSubmit}
-                  className="bg-blue-600 text-white rounded-xl px-6 py-2.5 text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
-                >
+                <button onClick={handleRxSubmit} className={PRIMARY_BTN}>
                   Continue <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Step 3: Medical devices */}
+          {/* Step 3: Medical devices yes/no */}
           {step === 3 && (
             <div className="flex justify-end gap-2">
-              <button
+              <button autoFocus
                 onClick={() => go('Yes, I use medical devices', 4, 'Tell me about each device — type, brand, and model.')}
-                className="bg-blue-600 text-white rounded-2xl px-5 py-2.5 text-sm font-medium hover:bg-blue-700"
+                className={PRIMARY_BTN_PILL}
               >
                 Yes, I use medical devices
               </button>
               <button
-                onClick={() => go('No, just prescriptions', 5, "Now let's map your care team. Who is your endocrinologist or diabetes specialist?")}
-                className="bg-white border border-gray-300 text-gray-700 rounded-2xl px-5 py-2.5 text-sm font-medium hover:bg-gray-50"
+                onClick={() => go('No, just prescriptions', 6, "Now let's map your care team. Who is your endocrinologist or diabetes specialist?")}
+                className={SECONDARY_BTN_PILL}
               >
                 No, just prescriptions
               </button>
@@ -284,49 +388,34 @@ export default function IntakePage() {
                 <div key={i} className="space-y-3">
                   <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Device type</label>
-                      <input
-                        value={d.type}
-                        onChange={e => updateDevice(i, 'type', e.target.value)}
-                        placeholder="CGM"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                      <label className={LABEL_CLS}>Device type</label>
+                      <input autoFocus={i === 0} value={d.type} onChange={e => updateDevice(i, 'type', e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleDeviceSubmit()} placeholder="CGM" className={INPUT_CLS} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Brand</label>
-                      <input
-                        value={d.brand}
-                        onChange={e => updateDevice(i, 'brand', e.target.value)}
-                        placeholder="Dexcom"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                      <label className={LABEL_CLS}>Brand</label>
+                      <input value={d.brand} onChange={e => updateDevice(i, 'brand', e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleDeviceSubmit()} placeholder="Dexcom" className={INPUT_CLS} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Model</label>
-                      <input
-                        value={d.model}
-                        onChange={e => updateDevice(i, 'model', e.target.value)}
-                        placeholder="G7"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                      <label className={LABEL_CLS}>Model</label>
+                      <input value={d.model} onChange={e => updateDevice(i, 'model', e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleDeviceSubmit()} placeholder="G7" className={INPUT_CLS} />
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                      Also a prescription supply?{' '}
-                      <span className="font-normal normal-case text-gray-400">(pump cartridges, sensors, infusion sets, etc.)</span>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                      Is this a prescription supply?{' '}
+                      <span className="font-normal normal-case text-gray-400">(i.e., do you get this from a pharmacy vs. direct from a manufacturer/distributor)</span>
                     </p>
                     <div className="flex gap-2">
                       {['Yes', 'No'].map(opt => (
-                        <button
-                          key={opt}
-                          onClick={() => updateDevice(i, 'hasSupply', opt === 'Yes')}
+                        <button key={opt} onClick={() => updateDevice(i, 'hasSupply', opt === 'Yes')}
                           className={`px-4 py-1.5 rounded-full text-sm border transition-colors ${
                             (opt === 'Yes') === d.hasSupply
                               ? 'bg-blue-600 text-white border-blue-600'
                               : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                          }`}
-                        >
+                          }`}>
                           {opt}
                         </button>
                       ))}
@@ -340,85 +429,164 @@ export default function IntakePage() {
                 </button>
               )}
               <div className="flex justify-end">
-                <button
-                  onClick={handleDeviceSubmit}
-                  className="bg-blue-600 text-white rounded-xl px-6 py-2.5 text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
-                >
+                <button onClick={handleDeviceSubmit} className={PRIMARY_BTN}>
                   Continue <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Step 5: Endo */}
+          {/* Step 5: Device customer service line */}
           {step === 5 && (
             <TextConfirmInput
-              value={endoVal}
-              onChange={setEndoVal}
-              onSubmit={() => go(endoVal, 6, 'And your primary care physician?')}
+              value={deviceServiceLine}
+              onChange={setDeviceServiceLine}
+              onSubmit={handleDeviceServiceLine}
+              placeholder="e.g. 1-888-738-3646"
             />
           )}
 
-          {/* Step 6: PCP */}
+          {/* Step 6: Endo */}
           {step === 6 && (
-            <TextConfirmInput
-              value={pcpVal}
-              onChange={setPcpVal}
-              onSubmit={() => go(pcpVal, 7, 'Where do you pick up your prescriptions — which pharmacy do you use?')}
-            />
+            <TextConfirmInput value={endoVal} onChange={setEndoVal} onSubmit={handleEndo} />
           )}
 
-          {/* Step 7: Pharmacy */}
+          {/* Step 7: PCP */}
           {step === 7 && (
-            <TextConfirmInput
-              value={pharmacyVal}
-              onChange={setPharmacyVal}
-              onSubmit={() => go(pharmacyVal, 8, 'Who handles your health insurance and coverage approvals?')}
-            />
+            <TextConfirmInput value={pcpVal} onChange={setPcpVal} onSubmit={handlePcp} />
           )}
 
-          {/* Step 8: Insurance */}
+          {/* Step 8: Pharmacy form card */}
           {step === 8 && (
-            <TextConfirmInput
-              value={insuranceVal}
-              onChange={setInsuranceVal}
-              onSubmit={() => go(
-                insuranceVal, 9,
-                "Since you use a Dexcom G7, should I add Dexcom's support line to your care network for sensor issues and warranty replacements?"
-              )}
-            />
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2 space-y-1">
+                  <label className={LABEL_CLS}>Pharmacy name</label>
+                  <input autoFocus value={pharmacy.name} onChange={e => setPharmacy(p => ({ ...p, name: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && handlePharmacy()} placeholder="CVS Pharmacy" className={INPUT_CLS} />
+                </div>
+                <div className="col-span-2 space-y-1.5">
+                  <label className={LABEL_CLS}>Is this a chain?</label>
+                  <div className="flex gap-2">
+                    {['Yes', 'No'].map(opt => (
+                      <button key={opt} onClick={() => setPharmacy(p => ({ ...p, isChain: opt === 'Yes' }))}
+                        className={`px-4 py-1.5 rounded-full text-sm border transition-colors ${
+                          pharmacy.isChain === (opt === 'Yes')
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}>
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <label className={LABEL_CLS}>Address</label>
+                  <input value={pharmacy.address} onChange={e => setPharmacy(p => ({ ...p, address: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && handlePharmacy()} placeholder="1420 Market St, San Francisco, CA 94102" className={INPUT_CLS} />
+                </div>
+                <div className="space-y-1">
+                  <label className={LABEL_CLS}>Phone</label>
+                  <input value={pharmacy.phone} onChange={e => setPharmacy(p => ({ ...p, phone: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && handlePharmacy()} placeholder="(415) 842-7700" className={INPUT_CLS} />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button onClick={handlePharmacy} className={PRIMARY_BTN}>
+                  Continue <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           )}
 
-          {/* Step 9: Dexcom support */}
+          {/* Step 9: Insurance form */}
           {step === 9 && (
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => go(
-                  'Yes, add Dexcom',
-                  10,
-                  `Perfect. Here's your complete care map, ${name || 'Audrey'}. I'll use this to proactively manage your care — handling refills, device issues, prior auths, and more before you even have to think about them.`
-                )}
-                className="bg-blue-600 text-white rounded-2xl px-5 py-2.5 text-sm font-medium hover:bg-blue-700"
-              >
-                Yes, add Dexcom
-              </button>
-              <button
-                onClick={() => go(
-                  'Skip for now',
-                  10,
-                  `Got it. Here's your complete care map, ${name || 'Audrey'}. I'll use this to proactively manage your care.`
-                )}
-                className="bg-white border border-gray-300 text-gray-700 rounded-2xl px-5 py-2.5 text-sm font-medium hover:bg-gray-50"
-              >
-                Skip for now
-              </button>
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-5">
+              {/* Primary */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Primary Insurance</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2 space-y-1">
+                    <label className={LABEL_CLS}>Plan name</label>
+                    <input autoFocus value={primaryIns.name} onChange={e => setPrimaryIns(p => ({ ...p, name: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && handleInsurance()} placeholder="Blue Shield PPO" className={INPUT_CLS} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className={LABEL_CLS}>Plan number</label>
+                    <input value={primaryIns.plan} onChange={e => setPrimaryIns(p => ({ ...p, plan: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && handleInsurance()} placeholder="BSC-PPO-2024" className={INPUT_CLS} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className={LABEL_CLS}>Group number</label>
+                    <input value={primaryIns.group} onChange={e => setPrimaryIns(p => ({ ...p, group: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && handleInsurance()} placeholder="GRP-88412" className={INPUT_CLS} />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <label className={LABEL_CLS}>Customer service number</label>
+                    <input value={primaryIns.phone} onChange={e => setPrimaryIns(p => ({ ...p, phone: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && handleInsurance()} placeholder="1-800-541-6765" className={INPUT_CLS} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Secondary toggle */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Do you have secondary insurance?</p>
+                <div className="flex gap-2">
+                  {['Yes', 'No'].map(opt => (
+                    <button key={opt} onClick={() => setHasSecondary(opt === 'Yes')}
+                      className={`px-4 py-1.5 rounded-full text-sm border transition-colors ${
+                        hasSecondary === (opt === 'Yes')
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}>
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Secondary fields */}
+              {hasSecondary && (
+                <div className="space-y-3 pt-1 border-t border-gray-100">
+                  <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Secondary Insurance</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2 space-y-1">
+                      <label className={LABEL_CLS}>Plan name</label>
+                      <input value={secondaryIns.name} onChange={e => setSecondaryIns(p => ({ ...p, name: e.target.value }))}
+                        onKeyDown={e => e.key === 'Enter' && handleInsurance()} placeholder="Medicare Part B" className={INPUT_CLS} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className={LABEL_CLS}>Plan number</label>
+                      <input value={secondaryIns.plan} onChange={e => setSecondaryIns(p => ({ ...p, plan: e.target.value }))}
+                        onKeyDown={e => e.key === 'Enter' && handleInsurance()} placeholder="MED-2024-B" className={INPUT_CLS} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className={LABEL_CLS}>Group number</label>
+                      <input value={secondaryIns.group} onChange={e => setSecondaryIns(p => ({ ...p, group: e.target.value }))}
+                        onKeyDown={e => e.key === 'Enter' && handleInsurance()} placeholder="GRP-00001" className={INPUT_CLS} />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <label className={LABEL_CLS}>Customer service number</label>
+                      <input value={secondaryIns.phone} onChange={e => setSecondaryIns(p => ({ ...p, phone: e.target.value }))}
+                        onKeyDown={e => e.key === 'Enter' && handleInsurance()} placeholder="1-800-633-4227" className={INPUT_CLS} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <button onClick={handleInsurance} className={PRIMARY_BTN}>
+                  Continue <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
 
           {/* Step 10: Care map + CTA */}
           {step === 10 && (
             <div className="space-y-4">
-              <CareMapSummary name={name || 'Audrey'} />
+              <CareMapSummary name={info.fullName.split(' ')[0] || 'there'} />
               <div className="flex justify-center pt-2">
                 <button
                   onClick={() => router.push('/demo/dashboard')}
@@ -441,10 +609,12 @@ function TextConfirmInput({
   value,
   onChange,
   onSubmit,
+  placeholder,
 }: {
   value: string
   onChange: (v: string) => void
   onSubmit: () => void
+  placeholder?: string
 }) {
   return (
     <div className="flex justify-end">
@@ -454,6 +624,7 @@ function TextConfirmInput({
           value={value}
           onChange={e => onChange(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && onSubmit()}
+          placeholder={placeholder}
           className="flex-1 border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         />
         <button
@@ -474,18 +645,16 @@ function CareMapSummary({ name }: { name: string }) {
         <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
           <Heart className="w-3 h-3 text-white fill-white" />
         </div>
-        <span className="font-semibold text-gray-900 text-sm">{name} — T1D Care Map</span>
-        <span className="ml-auto bg-green-100 text-green-700 text-xs px-2.5 py-1 rounded-full font-medium">
-          Complete
-        </span>
+        <span className="font-semibold text-gray-900 text-sm">{name} — Care Map</span>
+        <span className="ml-auto bg-green-100 text-green-700 text-xs px-2.5 py-1 rounded-full font-medium">Complete</span>
       </div>
       <div className="bg-gray-50 rounded-xl p-4 font-mono text-xs text-gray-700 leading-6 space-y-0.5">
-        <div className="font-semibold text-gray-900">{name} (T1D)</div>
+        <div className="font-semibold text-gray-900">{name} (Type 1 Diabetes)</div>
         <div className="ml-2">├── Humalog 10mL Vial <span className="text-gray-400">(every 4 weeks)</span></div>
         <div className="ml-6">├── Pickup refill → <span className="text-blue-600">CVS Pharmacy</span></div>
         <div className="ml-6">└── Refill request → <span className="text-blue-600">Dr. Anita Patel</span></div>
         <div className="ml-2">├── Dexcom G7 CGM</div>
-        <div className="ml-6">└── Sensor replacement → <span className="text-blue-600">Dexcom Support</span></div>
+        <div className="ml-6">└── Sensor replacement → <span className="text-blue-600">Dexcom Support (1-888-738-3646)</span></div>
         <div className="ml-2">├── Care Team</div>
         <div className="ml-6">├── Endocrinology → <span className="text-blue-600">Dr. Anita Patel</span></div>
         <div className="ml-6">└── Primary Care → <span className="text-blue-600">Dr. James Liu</span></div>
