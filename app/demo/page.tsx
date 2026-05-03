@@ -62,6 +62,8 @@ export default function IntakePage() {
   // Doctors
   const [endoVal, setEndoVal] = useState('Dr. Anita Patel (Endocrinology)')
   const [pcpVal, setPcpVal] = useState('Dr. James Liu (Primary Care)')
+  const [ophthoPhase, setOphthoPhase] = useState<'yn' | 'name'>('yn')
+  const [ophthoVal, setOphthoVal] = useState('Dr. Sarah Kim (Ophthalmology)')
 
   // Pharmacy
   const [pharmacy, setPharmacy] = useState<PharmacyInfo>({
@@ -163,14 +165,19 @@ export default function IntakePage() {
     go(endoVal, 7, 'And your primary care physician?')
 
   const handlePcp = () =>
-    go(pcpVal, 8, 'Where do you get your prescriptions filled? Tell me about your pharmacy.')
+    go(pcpVal, 8, 'T1D patients often benefit from annual eye exams. Do you have an ophthalmologist on your care team?')
+
+  const handleOphthoYes = () => setOphthoPhase('name')
+
+  const handleOphthoName = () =>
+    go(ophthoVal, 9, 'Where do you get your prescriptions filled? Tell me about your pharmacy.')
 
   const handlePharmacy = () => {
     const { name, isChain, address, phone } = pharmacy
     const summary = `${name}${isChain ? ' (chain)' : ''} · ${address} · ${phone}`
     go(
       summary,
-      9,
+      10,
       "Last step — insurance. Please list your primary insurance and secondary if applicable, including plan name, plan number, group number, and customer service number."
     )
   }
@@ -183,7 +190,7 @@ export default function IntakePage() {
     const firstName = info.fullName.split(' ')[0] || 'there'
     go(
       summary,
-      10,
+      11,
       `Perfect — your care map is complete, ${firstName}. I'll use this to proactively manage your care, handling refills, device issues, prior auths, and more before you ever have to think about them.`
     )
   }
@@ -456,8 +463,24 @@ export default function IntakePage() {
             <TextConfirmInput value={pcpVal} onChange={setPcpVal} onSubmit={handlePcp} />
           )}
 
-          {/* Step 8: Pharmacy form card */}
-          {step === 8 && (
+          {/* Step 8: Ophthalmologist */}
+          {step === 8 && ophthoPhase === 'yn' && (
+            <div className="flex justify-end gap-2">
+              <button autoFocus onClick={handleOphthoYes} className={PRIMARY_BTN_PILL}>Yes</button>
+              <button
+                onClick={() => go('No ophthalmologist', 9, 'Where do you get your prescriptions filled? Tell me about your pharmacy.')}
+                className={SECONDARY_BTN_PILL}
+              >
+                No
+              </button>
+            </div>
+          )}
+          {step === 8 && ophthoPhase === 'name' && (
+            <TextConfirmInput value={ophthoVal} onChange={setOphthoVal} onSubmit={handleOphthoName} />
+          )}
+
+          {/* Step 9: Pharmacy form card */}
+          {step === 9 && (
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 space-y-1">
@@ -499,8 +522,8 @@ export default function IntakePage() {
             </div>
           )}
 
-          {/* Step 9: Insurance form */}
-          {step === 9 && (
+          {/* Step 10: Insurance form */}
+          {step === 10 && (
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-5">
               {/* Primary */}
               <div className="space-y-3">
@@ -583,8 +606,8 @@ export default function IntakePage() {
             </div>
           )}
 
-          {/* Step 10: CTA */}
-          {step === 10 && (
+          {/* Step 11: CTA */}
+          {step === 11 && (
             <div className="flex justify-center pt-2">
               <button
                 onClick={() => router.push('/demo/dashboard')}

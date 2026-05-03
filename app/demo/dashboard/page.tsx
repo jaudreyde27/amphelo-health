@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Heart, User, Pill, Monitor, Building2, Shield, Phone, Send, CheckCircle2, AlertCircle, Calendar } from 'lucide-react'
 
 type Tab = 'dashboard' | 'requests'
@@ -11,6 +12,7 @@ const CARE_NETWORK = {
   prescribers: [
     { name: 'Dr. Anita Patel', detail: 'Endocrinology' },
     { name: 'Dr. James Liu', detail: 'Primary Care' },
+    { name: 'Dr. Sarah Kim', detail: 'Ophthalmology' },
   ],
   medications: [
     'Humalog 100u/mL KwikPen',
@@ -41,8 +43,9 @@ const DEVICES = [
 ]
 
 const APPOINTMENTS = [
-  { doctor: 'Dr. Anita Patel', specialty: 'Endocrinology', date: 'May 20, 2026', time: '10:00 AM', daysAway: 17, status: 'confirmed' as const },
-  { doctor: 'Dr. James Liu', specialty: 'Primary Care', date: 'Jun 10, 2026', time: '2:30 PM', daysAway: 38, status: 'confirmed' as const },
+  { doctor: 'Dr. Anita Patel', specialty: 'Endocrinology', date: 'May 20, 2026', time: '10:00 AM', daysAway: 17, status: 'confirmed' as const, lastVisit: null },
+  { doctor: 'Dr. James Liu', specialty: 'Primary Care', date: 'Jun 10, 2026', time: '2:30 PM', daysAway: 38, status: 'confirmed' as const, lastVisit: null },
+  { doctor: 'Dr. Sarah Kim', specialty: 'Ophthalmology', date: null, time: null, daysAway: null, status: 'unscheduled' as const, lastVisit: 'Jan 15, 2026' },
 ]
 
 const RECENT_REQUESTS = [
@@ -118,6 +121,7 @@ function getScenario(text: string): ReqMsg[] {
 
 export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>('dashboard')
+  const router = useRouter()
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] flex flex-col">
@@ -127,6 +131,12 @@ export default function DashboardPage() {
         </div>
         <span className="font-semibold text-gray-900">Amphelo</span>
         <div className="flex-1" />
+        <button
+          onClick={() => router.push('/demo')}
+          className="text-xs text-gray-500 border border-gray-200 hover:border-gray-300 hover:text-gray-700 px-3 py-1.5 rounded-lg transition-colors mr-2"
+        >
+          Update Care Profile
+        </button>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
             <span className="text-blue-700 text-xs font-semibold">A</span>
@@ -316,11 +326,25 @@ function CareItemsTracker() {
                 <p className="text-sm font-medium text-gray-900">{a.doctor}</p>
                 <p className="text-xs text-gray-500">{a.specialty}</p>
               </div>
-              <div className="text-right">
-                <p className="text-xs font-medium text-gray-700">{a.date} at {a.time}</p>
-                <p className="text-xs text-gray-400 mt-0.5">in {a.daysAway} days</p>
-              </div>
-              <span className="bg-green-100 text-green-700 text-xs px-2.5 py-1 rounded-full font-medium">Confirmed</span>
+              {a.status === 'unscheduled' ? (
+                <>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Last visit: <span className="font-medium text-gray-700">{a.lastVisit}</span></p>
+                    <p className="text-xs text-gray-400 mt-0.5">No appointment scheduled</p>
+                  </div>
+                  <button className="text-xs font-medium text-blue-600 border border-blue-300 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors">
+                    Schedule Now
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="text-right">
+                    <p className="text-xs font-medium text-gray-700">{a.date} at {a.time}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">in {a.daysAway} days</p>
+                  </div>
+                  <span className="bg-green-100 text-green-700 text-xs px-2.5 py-1 rounded-full font-medium">Confirmed</span>
+                </>
+              )}
             </div>
           ))}
         </div>
