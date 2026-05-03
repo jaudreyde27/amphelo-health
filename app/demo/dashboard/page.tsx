@@ -8,7 +8,7 @@ import {
   Star, MapPin, Edit2, Check, X,
 } from 'lucide-react'
 
-type Tab = 'dashboard' | 'requests' | 'settings' | 'pharmacy-map' | 'specialists'
+type Tab = 'dashboard' | 'requests' | 'pharmacy-map' | 'specialists' | 'settings'
 
 // ── Demo data ──────────────────────────────────────────────────────────────
 
@@ -37,10 +37,8 @@ const PRESCRIPTIONS = [
 ]
 
 const DEVICES = [
-  { name: 'Dexcom G7', type: 'CGM', kind: 'hardware' as const, note: 'No active issues', nextRefill: null, daysAway: null, status: 'active' as const, agentNote: null },
-  { name: 'Omnipod Pod 5', type: 'Insulin Pump', kind: 'hardware' as const, note: 'No active issues', nextRefill: null, daysAway: null, status: 'active' as const, agentNote: null },
-  { name: 'Dexcom 3-pack', type: 'CGM Sensor Supply', kind: 'supply' as const, note: null, nextRefill: 'Jun 30, 2026', daysAway: 58, status: 'on-track' as const, agentNote: null },
-  { name: 'Omnipod 5 Pods', type: 'Pump Supply (10-pack)', kind: 'supply' as const, note: null, nextRefill: 'May 10, 2026', daysAway: 7, status: 'due-soon' as const, agentNote: 'Refill request queued' },
+  { name: 'Dexcom G7 Sensors (3-pack)', type: 'CGM Sensor Supply', nextRefill: 'Jun 30, 2026', daysAway: 58, status: 'on-track' as const, agentNote: null },
+  { name: 'Omnipod 5 Pods (10-pack)', type: 'Pump Supply', nextRefill: 'May 10, 2026', daysAway: 7, status: 'due-soon' as const, agentNote: 'Refill request queued' },
 ]
 
 const APPOINTMENTS = [
@@ -56,10 +54,10 @@ const RECENT_REQUESTS = [
 ]
 
 const SPECIALISTS = [
-  { name: 'Dr. Maya Patel', practice: 'UCSF Diabetes Center', address: '400 Parnassus Ave, San Francisco', distance: '0.8 mi', rating: 4.9, reviews: 142, t1dSpecialized: true, acceptsInsurance: true },
-  { name: 'Dr. Robert Chen', practice: 'Kaiser Permanente Endocrinology', address: '2238 Geary Blvd, San Francisco', distance: '1.2 mi', rating: 4.7, reviews: 89, t1dSpecialized: true, acceptsInsurance: true },
-  { name: 'Dr. Jennifer Walsh', practice: 'Stanford Medicine Partners', address: '100 S Van Ness Ave, San Francisco', distance: '2.1 mi', rating: 4.8, reviews: 211, t1dSpecialized: true, acceptsInsurance: true },
-  { name: 'Dr. David Kim', practice: 'CPMC Endocrinology', address: '3801 Sacramento St, San Francisco', distance: '1.5 mi', rating: 4.6, reviews: 73, t1dSpecialized: false, acceptsInsurance: true },
+  { name: 'Dr. Maya Patel', practice: 'UCSF Diabetes Center', address: '400 Parnassus Ave, San Francisco', distance: '0.8 mi', rating: 4.9, reviews: 142, t1dSpecialized: true, acceptsInsurance: true, topReview: "She's been managing my Type 1 for 6 years. She actually understands the CGM data and adjusts my basal rates herself — I've never had to explain what a Dexcom is." },
+  { name: 'Dr. Robert Chen', practice: 'Kaiser Permanente Endocrinology', address: '2238 Geary Blvd, San Francisco', distance: '1.2 mi', rating: 4.7, reviews: 89, t1dSpecialized: true, acceptsInsurance: true, topReview: "As a T1D since age 9, I've seen a lot of endos. Dr. Chen is one of the few who treats T1 and T2 completely differently. He's fluent in closed-loop systems and helped me get my Omnipod 5 covered." },
+  { name: 'Dr. Jennifer Walsh', practice: 'Stanford Medicine Partners', address: '100 S Van Ness Ave, San Francisco', distance: '2.1 mi', rating: 4.8, reviews: 211, t1dSpecialized: true, acceptsInsurance: true, topReview: "Finally a doctor who knows Type 1 inside and out. She set up my DIY looping, navigated my prior auth for Humalog, and responds to MyChart messages within the hour during a hypoglycemic episode." },
+  { name: 'Dr. David Kim', practice: 'CPMC Endocrinology', address: '3801 Sacramento St, San Francisco', distance: '1.5 mi', rating: 4.6, reviews: 73, t1dSpecialized: false, acceptsInsurance: true, topReview: "Good general endocrinologist. He's more Type 2-focused but was willing to learn about my Omnipod setup. Not a T1 specialist, but thorough and easy to get appointments with." },
 ]
 
 // ── Pre-loaded chat ─────────────────────────────────────────────────────────
@@ -124,9 +122,9 @@ function getScenario(text: string): ReqMsg[] {
 const TAB_LABELS: Record<Tab, string> = {
   dashboard: 'Dashboard',
   requests: 'Requests',
-  settings: 'Settings',
   'pharmacy-map': 'Pharmacy Map',
   specialists: 'Specialists',
+  settings: 'Settings',
 }
 
 export default function DashboardPage() {
@@ -322,31 +320,22 @@ function CareItemsTracker() {
         <div className="divide-y divide-gray-50">
           {DEVICES.map(d => (
             <div key={d.name} className="px-5 py-4 flex items-center gap-4">
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900">{d.name}</p>
                 <p className="text-xs text-gray-500">{d.type}</p>
               </div>
-              {d.kind === 'hardware' ? (
-                <>
-                  <p className="text-xs text-gray-500">{d.note}</p>
-                  <span className="bg-green-100 text-green-700 text-xs px-2.5 py-1 rounded-full font-medium">Active</span>
-                </>
-              ) : (
-                <>
-                  <div className="text-right">
-                    <div className="flex items-center gap-1.5 justify-end">
-                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                      <p className="text-xs text-gray-600">Next refill: <span className="font-medium">{d.nextRefill}</span></p>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-0.5">in {d.daysAway} days</p>
-                  </div>
-                  <StatusBadge status={d.status as 'due-soon' | 'on-track'} />
-                  {d.agentNote && (
-                    <span className="text-xs text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full whitespace-nowrap hidden lg:block">
-                      {d.agentNote}
-                    </span>
-                  )}
-                </>
+              <div className="text-right">
+                <div className="flex items-center gap-1.5 justify-end">
+                  <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                  <p className="text-xs text-gray-600">Next refill: <span className="font-medium">{d.nextRefill}</span></p>
+                </div>
+                <p className="text-xs text-gray-400 mt-0.5">in {d.daysAway} days</p>
+              </div>
+              <StatusBadge status={d.status} />
+              {d.agentNote && (
+                <span className="text-xs text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full whitespace-nowrap hidden lg:block">
+                  {d.agentNote}
+                </span>
               )}
             </div>
           ))}
@@ -708,7 +697,11 @@ function PharmacyMapTab() {
             height="100%"
             style={{ border: 0 }}
             loading="lazy"
-            src={`https://maps.google.com/maps?q=${chain === 'All' ? 'pharmacy' : chain}+near+San+Francisco+CA&output=embed`}
+            src={`https://maps.google.com/maps?q=${
+              chain === 'All' ? 'pharmacy' :
+              chain === 'CVS' ? 'CVS+Pharmacy' :
+              'Walgreens+Pharmacy'
+            }+San+Francisco+CA&output=embed`}
           />
         </div>
 
@@ -784,32 +777,37 @@ function SpecialistFinderTab() {
       {/* Results */}
       <div className="space-y-3">
         {SPECIALISTS.map((s, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4 flex items-center gap-5">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <Stethoscope className="w-5 h-5 text-blue-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm font-semibold text-gray-900">{s.name}</p>
-                {s.t1dSpecialized && (
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">T1D Specialized</span>
-                )}
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Accepts Blue Shield PPO</span>
+          <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4 space-y-3">
+            <div className="flex items-start gap-5">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Stethoscope className="w-5 h-5 text-blue-600" />
               </div>
-              <p className="text-xs text-gray-600 mt-0.5">{s.practice}</p>
-              <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
-                <MapPin className="w-3 h-3" /> {s.address} · {s.distance}
-              </p>
-            </div>
-            <div className="text-right flex-shrink-0">
-              <div className="flex items-center gap-1 justify-end">
-                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                <span className="text-sm font-semibold text-gray-900">{s.rating}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-semibold text-gray-900">{s.name}</p>
+                  {s.t1dSpecialized && (
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">T1D Specialized</span>
+                  )}
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Accepts Blue Shield PPO</span>
+                </div>
+                <p className="text-xs text-gray-600 mt-0.5">{s.practice}</p>
+                <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                  <MapPin className="w-3 h-3" /> {s.address} · {s.distance}
+                </p>
               </div>
-              <p className="text-xs text-gray-400 mt-0.5">{s.reviews} reviews</p>
-              <button className="mt-2 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                Request Referral
-              </button>
+              <div className="text-right flex-shrink-0">
+                <div className="flex items-center gap-1 justify-end">
+                  <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                  <span className="text-sm font-semibold text-gray-900">{s.rating}</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-0.5">{s.reviews} reviews</p>
+                <button className="mt-2 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                  Request Referral
+                </button>
+              </div>
+            </div>
+            <div className={`rounded-xl px-4 py-3 border-l-2 ${s.t1dSpecialized ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-200'}`}>
+              <p className={`text-xs leading-relaxed italic ${s.t1dSpecialized ? 'text-blue-800' : 'text-gray-600'}`}>"{s.topReview}"</p>
             </div>
           </div>
         ))}
