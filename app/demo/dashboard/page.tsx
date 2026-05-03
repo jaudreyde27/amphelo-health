@@ -2,22 +2,23 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Heart, User, Pill, Monitor, Building2, Shield, Phone, Send, CheckCircle2, AlertCircle, Calendar } from 'lucide-react'
+import {
+  Heart, User, Pill, Monitor, Building2, Shield, Phone, Send,
+  CheckCircle2, AlertCircle, Calendar, Settings, Map, Stethoscope,
+  Star, MapPin, Edit2, Check, X,
+} from 'lucide-react'
 
-type Tab = 'dashboard' | 'requests'
+type Tab = 'dashboard' | 'requests' | 'settings' | 'pharmacy-map' | 'specialists'
 
 // ── Demo data ──────────────────────────────────────────────────────────────
 
 const CARE_NETWORK = {
   prescribers: [
-    { name: 'Dr. Anita Patel', detail: 'Endocrinology' },
-    { name: 'Dr. James Liu', detail: 'Primary Care' },
-    { name: 'Dr. Sarah Kim', detail: 'Ophthalmology' },
+    { name: 'Dr. Anita Patel', specialty: 'Endocrinology', system: 'Mount Sinai', phone: '(212) 241-6500' },
+    { name: 'Dr. James Liu', specialty: 'Primary Care', system: 'Mount Sinai', phone: '(212) 241-7000' },
+    { name: 'Dr. Sarah Kim', specialty: 'Ophthalmology', system: 'Mount Sinai', phone: '(212) 241-8500' },
   ],
-  medications: [
-    'Humalog 100u/mL KwikPen',
-    'Tresiba 100u/mL FlexTouch',
-  ],
+  medications: ['Humalog 100u/mL KwikPen', 'Tresiba 100u/mL FlexTouch'],
   devices: ['Dexcom CGM Sensor G7', 'Omnipod Insulin Pump Pod 5'],
   pharmacies: [
     { name: 'CVS Pharmacy', address: '1420 Market St, San Francisco, CA 94102', phone: '(415) 842-7700' },
@@ -33,13 +34,13 @@ const CARE_NETWORK = {
 const PRESCRIPTIONS = [
   { name: 'Humalog KwikPen', format: '100u/mL', nextRefill: 'May 13, 2026', daysAway: 10, status: 'due-soon' as const, agentNote: 'Refill request queued' },
   { name: 'Tresiba FlexTouch', format: '100u/mL', nextRefill: 'May 18, 2026', daysAway: 15, status: 'on-track' as const, agentNote: null },
-  { name: 'Dexcom G7 Sensors', format: '10-pack', nextRefill: 'Jun 30, 2026', daysAway: 58, status: 'on-track' as const, agentNote: null },
-  { name: 'Omnipod 5 Pods', format: '10-pack', nextRefill: 'May 10, 2026', daysAway: 7, status: 'due-soon' as const, agentNote: 'Refill request queued' },
 ]
 
 const DEVICES = [
-  { name: 'Dexcom G7', type: 'CGM', status: 'active' as const, note: 'No active issues' },
-  { name: 'Omnipod Pod 5', type: 'Insulin Pump', status: 'active' as const, note: 'No active issues' },
+  { name: 'Dexcom G7', type: 'CGM', kind: 'hardware' as const, note: 'No active issues', nextRefill: null, daysAway: null, status: 'active' as const, agentNote: null },
+  { name: 'Omnipod Pod 5', type: 'Insulin Pump', kind: 'hardware' as const, note: 'No active issues', nextRefill: null, daysAway: null, status: 'active' as const, agentNote: null },
+  { name: 'Dexcom 3-pack', type: 'CGM Sensor Supply', kind: 'supply' as const, note: null, nextRefill: 'Jun 30, 2026', daysAway: 58, status: 'on-track' as const, agentNote: null },
+  { name: 'Omnipod 5 Pods', type: 'Pump Supply (10-pack)', kind: 'supply' as const, note: null, nextRefill: 'May 10, 2026', daysAway: 7, status: 'due-soon' as const, agentNote: 'Refill request queued' },
 ]
 
 const APPOINTMENTS = [
@@ -54,7 +55,14 @@ const RECENT_REQUESTS = [
   { id: 3, summary: 'Reschedule endocrinology appointment', date: 'Apr 15', status: 'resolved' as const, outcome: 'Appointment moved to May 20' },
 ]
 
-// ── Pre-loaded chat (Atlanta scenario already resolved) ────────────────────
+const SPECIALISTS = [
+  { name: 'Dr. Maya Patel', practice: 'UCSF Diabetes Center', address: '400 Parnassus Ave, San Francisco', distance: '0.8 mi', rating: 4.9, reviews: 142, t1dSpecialized: true, acceptsInsurance: true },
+  { name: 'Dr. Robert Chen', practice: 'Kaiser Permanente Endocrinology', address: '2238 Geary Blvd, San Francisco', distance: '1.2 mi', rating: 4.7, reviews: 89, t1dSpecialized: true, acceptsInsurance: true },
+  { name: 'Dr. Jennifer Walsh', practice: 'Stanford Medicine Partners', address: '100 S Van Ness Ave, San Francisco', distance: '2.1 mi', rating: 4.8, reviews: 211, t1dSpecialized: true, acceptsInsurance: true },
+  { name: 'Dr. David Kim', practice: 'CPMC Endocrinology', address: '3801 Sacramento St, San Francisco', distance: '1.5 mi', rating: 4.6, reviews: 73, t1dSpecialized: false, acceptsInsurance: true },
+]
+
+// ── Pre-loaded chat ─────────────────────────────────────────────────────────
 
 type ReqMsg = {
   id: string
@@ -72,12 +80,9 @@ const PRELOADED_CHAT: ReqMsg[] = [
   { id: 'p7', type: 'pill-green', content: 'Vacation override approved' },
 ]
 
-// ── Scenarios for new requests ─────────────────────────────────────────────
-
 function getScenario(text: string): ReqMsg[] {
   const t = text.toLowerCase()
   const id = () => `${Date.now()}-${Math.random()}`
-
   if (t.includes('sensor') || t.includes('cgm') || t.includes('dexcom') || t.includes('g7')) {
     return [
       { id: id(), type: 'amphelo', content: "I'm on it. I'm contacting Dexcom now to process a warranty replacement for your G7 sensor." },
@@ -87,7 +92,6 @@ function getScenario(text: string): ReqMsg[] {
       { id: id(), type: 'pill-green', content: 'Replacement order confirmed' },
     ]
   }
-
   if (t.includes('insulin') || t.includes('humalog') || t.includes('tresiba') || t.includes('refill') || t.includes('pharmacy')) {
     return [
       { id: id(), type: 'amphelo', content: "I'm on it. Let me check Humalog stock at your nearest in-network pharmacy." },
@@ -97,8 +101,7 @@ function getScenario(text: string): ReqMsg[] {
       { id: id(), type: 'pill-green', content: 'Refill order confirmed' },
     ]
   }
-
-  if (t.includes('appointment') || t.includes('doctor') || t.includes('reschedule') || t.includes('patel') || t.includes('liu')) {
+  if (t.includes('appointment') || t.includes('doctor') || t.includes('reschedule')) {
     return [
       { id: id(), type: 'amphelo', content: "I'll reach out to Dr. Patel's office to check available slots and handle the scheduling for you." },
       { id: id(), type: 'pill-blue', content: "Contacting Dr. Patel's office..." },
@@ -107,7 +110,6 @@ function getScenario(text: string): ReqMsg[] {
       { id: id(), type: 'pill-green', content: 'Appointment confirmed' },
     ]
   }
-
   return [
     { id: id(), type: 'amphelo', content: "I'm reviewing your care profile and coordinating with the right contacts in your network." },
     { id: id(), type: 'pill-blue', content: 'Analyzing request...' },
@@ -117,7 +119,15 @@ function getScenario(text: string): ReqMsg[] {
   ]
 }
 
-// ── Main component ─────────────────────────────────────────────────────────
+// ── Main component ──────────────────────────────────────────────────────────
+
+const TAB_LABELS: Record<Tab, string> = {
+  dashboard: 'Dashboard',
+  requests: 'Requests',
+  settings: 'Settings',
+  'pharmacy-map': 'Pharmacy Map',
+  specialists: 'Specialists',
+}
 
 export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>('dashboard')
@@ -131,11 +141,8 @@ export default function DashboardPage() {
         </div>
         <span className="font-semibold text-gray-900">Amphelo</span>
         <div className="flex-1" />
-        <button
-          onClick={() => router.push('/demo')}
-          className="text-xs text-gray-500 border border-gray-200 hover:border-gray-300 hover:text-gray-700 px-3 py-1.5 rounded-lg transition-colors mr-2"
-        >
-          Update Care Profile
+        <button onClick={() => router.push('/demo')} className="text-xs text-gray-400 hover:text-gray-600 transition-colors mr-3">
+          Back to Intake
         </button>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -145,33 +152,34 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Tab bar */}
-      <div className="bg-white border-b border-gray-200 px-6">
-        <div className="max-w-5xl mx-auto flex gap-0">
-          {(['dashboard', 'requests'] as Tab[]).map(t => (
+      <div className="bg-white border-b border-gray-200 px-6 overflow-x-auto">
+        <div className="max-w-5xl mx-auto flex gap-0 min-w-max">
+          {(Object.keys(TAB_LABELS) as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-5 py-3.5 text-sm font-medium border-b-2 transition-colors capitalize ${
-                tab === t
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              className={`px-5 py-3.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                tab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              {t === 'dashboard' ? 'Dashboard' : 'Requests'}
+              {TAB_LABELS[t]}
             </button>
           ))}
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {tab === 'dashboard' ? <DashboardTab /> : <RequestsTab />}
+        {tab === 'dashboard' && <DashboardTab />}
+        {tab === 'requests' && <RequestsTab />}
+        {tab === 'settings' && <SettingsTab />}
+        {tab === 'pharmacy-map' && <PharmacyMapTab />}
+        {tab === 'specialists' && <SpecialistFinderTab />}
       </div>
     </div>
   )
 }
 
-// ── Dashboard tab ──────────────────────────────────────────────────────────
+// ── Dashboard tab ───────────────────────────────────────────────────────────
 
 function DashboardTab() {
   return (
@@ -190,7 +198,17 @@ function CareNetworkGrid() {
       label: 'Prescribers',
       bg: 'bg-blue-50',
       iconBg: 'bg-blue-100 text-blue-600',
-      items: CARE_NETWORK.prescribers.map(p => `${p.name} (${p.detail})`),
+      custom: (
+        <ul className="space-y-2">
+          {CARE_NETWORK.prescribers.map((p, i) => (
+            <li key={i} className="text-xs text-gray-700">
+              <div className="flex gap-1.5"><span className="text-gray-400">•</span><span className="font-medium">{p.name}</span></div>
+              <div className="ml-3.5 text-gray-500">{p.specialty} · {p.system}</div>
+              <div className="ml-3.5 text-gray-500">{p.phone}</div>
+            </li>
+          ))}
+        </ul>
+      ),
     },
     {
       icon: <Pill className="w-3.5 h-3.5" />,
@@ -244,14 +262,16 @@ function CareNetworkGrid() {
               </div>
               <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{panel.label}</span>
             </div>
-            <ul className="space-y-1">
-              {panel.items.map((item, i) => (
-                <li key={i} className="text-xs text-gray-700 flex gap-1.5">
-                  <span className="text-gray-400 flex-shrink-0">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+            {'custom' in panel ? panel.custom : (
+              <ul className="space-y-1">
+                {(panel.items ?? []).map((item, i) => (
+                  <li key={i} className="text-xs text-gray-700 flex gap-1.5">
+                    <span className="text-gray-400 flex-shrink-0">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         ))}
       </div>
@@ -306,8 +326,28 @@ function CareItemsTracker() {
                 <p className="text-sm font-medium text-gray-900">{d.name}</p>
                 <p className="text-xs text-gray-500">{d.type}</p>
               </div>
-              <p className="text-xs text-gray-500">{d.note}</p>
-              <span className="bg-green-100 text-green-700 text-xs px-2.5 py-1 rounded-full font-medium">Active</span>
+              {d.kind === 'hardware' ? (
+                <>
+                  <p className="text-xs text-gray-500">{d.note}</p>
+                  <span className="bg-green-100 text-green-700 text-xs px-2.5 py-1 rounded-full font-medium">Active</span>
+                </>
+              ) : (
+                <>
+                  <div className="text-right">
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                      <p className="text-xs text-gray-600">Next refill: <span className="font-medium">{d.nextRefill}</span></p>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">in {d.daysAway} days</p>
+                  </div>
+                  <StatusBadge status={d.status as 'due-soon' | 'on-track'} />
+                  {d.agentNote && (
+                    <span className="text-xs text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full whitespace-nowrap hidden lg:block">
+                      {d.agentNote}
+                    </span>
+                  )}
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -364,11 +404,9 @@ function RecentRequestsPreview() {
         {RECENT_REQUESTS.map(r => (
           <div key={r.id} className="px-5 py-4 flex items-start gap-4">
             <div className="mt-0.5">
-              {r.status === 'resolved' ? (
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-              ) : (
-                <AlertCircle className="w-4 h-4 text-amber-500" />
-              )}
+              {r.status === 'resolved'
+                ? <CheckCircle2 className="w-4 h-4 text-green-500" />
+                : <AlertCircle className="w-4 h-4 text-amber-500" />}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900">{r.summary}</p>
@@ -377,9 +415,7 @@ function RecentRequestsPreview() {
             <div className="text-right flex-shrink-0">
               <p className="text-xs text-gray-400">{r.date}</p>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block ${
-                r.status === 'resolved'
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-amber-100 text-amber-700'
+                r.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
               }`}>
                 {r.status === 'resolved' ? 'Resolved' : 'In Progress'}
               </span>
@@ -394,16 +430,14 @@ function RecentRequestsPreview() {
 function StatusBadge({ status }: { status: 'due-soon' | 'on-track' }) {
   return (
     <span className={`text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap ${
-      status === 'due-soon'
-        ? 'bg-amber-100 text-amber-700'
-        : 'bg-green-100 text-green-700'
+      status === 'due-soon' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
     }`}>
       {status === 'due-soon' ? 'Due soon' : 'On track'}
     </span>
   )
 }
 
-// ── Requests tab ───────────────────────────────────────────────────────────
+// ── Requests tab ────────────────────────────────────────────────────────────
 
 function RequestsTab() {
   const [messages, setMessages] = useState<ReqMsg[]>(PRELOADED_CHAT)
@@ -412,69 +446,45 @@ function RequestsTab() {
   const [isTyping, setIsTyping] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isTyping])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, isTyping])
 
-  const addMsg = useCallback((msg: ReqMsg) => {
-    setMessages(prev => [...prev, msg])
-  }, [])
+  const addMsg = useCallback((msg: ReqMsg) => setMessages(prev => [...prev, msg]), [])
 
   const handleSubmit = () => {
     const text = input.trim()
     if (!text || busy) return
     setInput('')
     setBusy(true)
-
-    const userMsg: ReqMsg = { id: `u-${Date.now()}`, type: 'user', content: text }
-    setMessages(prev => [...prev, userMsg])
-
+    setMessages(prev => [...prev, { id: `u-${Date.now()}`, type: 'user', content: text }])
     const scenario = getScenario(text)
     let delay = 1200
-
     scenario.forEach((msg, i) => {
       const isPill = msg.type.startsWith('pill-')
-      const isLast = i === scenario.length - 1
-
-      if (!isPill && i === 0) {
-        setTimeout(() => setIsTyping(true), delay - 400)
-      }
-
+      if (!isPill && i === 0) setTimeout(() => setIsTyping(true), delay - 400)
       setTimeout(() => {
         if (!isPill) setIsTyping(false)
         addMsg(msg)
-        if (isLast) setBusy(false)
+        if (i === scenario.length - 1) setBusy(false)
       }, delay)
-
       delay += isPill ? 1800 : 2400
     })
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-6 flex flex-col" style={{ height: 'calc(100vh - 113px)' }}>
+    <div className="max-w-3xl mx-auto px-6 py-6 flex flex-col" style={{ height: 'calc(100vh - 121px)' }}>
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col flex-1 overflow-hidden">
-        {/* Chat header */}
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
           <h3 className="font-semibold text-gray-900">Ad Hoc Requests</h3>
-          <span className="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full font-medium">
-            Coordinator ready
-          </span>
+          <span className="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full font-medium">Coordinator ready</span>
         </div>
-
-        {/* Messages */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-3">
           {messages.map(msg => <ChatBubble key={msg.id} msg={msg} />)}
-
           {isTyping && (
             <div className="flex justify-start">
               <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
                 <div className="flex gap-1 items-center h-4">
                   {[0, 150, 300].map(d => (
-                    <span
-                      key={d}
-                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                      style={{ animationDelay: `${d}ms` }}
-                    />
+                    <span key={d} className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
                   ))}
                 </div>
               </div>
@@ -482,29 +492,16 @@ function RequestsTab() {
           )}
           <div ref={bottomRef} />
         </div>
-
-        {/* Input */}
         <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0">
           <div className="flex gap-3 items-end">
-            <textarea
-              rows={1}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  handleSubmit()
-                }
-              }}
+            <textarea rows={1} value={input} onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
               placeholder="Describe what's going on and I'll handle it..."
               disabled={busy}
               className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             />
-            <button
-              onClick={handleSubmit}
-              disabled={!input.trim() || busy}
-              className="bg-blue-600 text-white rounded-xl p-2.5 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
-            >
+            <button onClick={handleSubmit} disabled={!input.trim() || busy}
+              className="bg-blue-600 text-white rounded-xl p-2.5 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0">
               <Send className="w-4 h-4" />
             </button>
           </div>
@@ -518,58 +515,305 @@ function RequestsTab() {
 }
 
 function ChatBubble({ msg }: { msg: ReqMsg }) {
-  if (msg.type === 'user') {
-    return (
-      <div className="flex justify-end">
-        <div className="bg-blue-600 text-white rounded-2xl rounded-br-sm px-4 py-3 text-sm max-w-md leading-relaxed">
-          {msg.content}
+  if (msg.type === 'user') return (
+    <div className="flex justify-end">
+      <div className="bg-blue-600 text-white rounded-2xl rounded-br-sm px-4 py-3 text-sm max-w-md leading-relaxed">{msg.content}</div>
+    </div>
+  )
+  if (msg.type === 'amphelo') return (
+    <div className="flex justify-start">
+      <div className="bg-gray-100 text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 text-sm max-w-md leading-relaxed"
+        dangerouslySetInnerHTML={{ __html: msg.content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
+    </div>
+  )
+  if (msg.type === 'pill-blue') return (
+    <div className="flex justify-start">
+      <span className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 text-xs px-3 py-1.5 rounded-full font-medium">
+        <Phone className="w-3 h-3" /> {msg.content}
+      </span>
+    </div>
+  )
+  if (msg.type === 'pill-amber') return (
+    <div className="flex justify-start">
+      <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-700 text-xs px-3 py-1.5 rounded-full font-medium">
+        <Phone className="w-3 h-3" /> {msg.content}
+      </span>
+    </div>
+  )
+  if (msg.type === 'pill-green') return (
+    <div className="flex justify-start">
+      <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 text-xs px-3 py-1.5 rounded-full font-medium">
+        <CheckCircle2 className="w-3 h-3" /> {msg.content}
+      </span>
+    </div>
+  )
+  return null
+}
+
+// ── Settings tab ────────────────────────────────────────────────────────────
+
+function SettingsTab() {
+  const [editing, setEditing] = useState<string | null>(null)
+
+  const sections = [
+    {
+      id: 'prescribers',
+      title: 'Care Team',
+      icon: <User className="w-4 h-4 text-gray-500" />,
+      rows: CARE_NETWORK.prescribers.map(p => ({
+        primary: p.name,
+        secondary: `${p.specialty} · ${p.system}`,
+        tertiary: p.phone,
+      })),
+    },
+    {
+      id: 'prescriptions',
+      title: 'Prescriptions',
+      icon: <Pill className="w-4 h-4 text-gray-500" />,
+      rows: PRESCRIPTIONS.map(rx => ({
+        primary: rx.name,
+        secondary: `${rx.format} · Every 4 weeks`,
+        tertiary: null,
+      })),
+    },
+    {
+      id: 'devices',
+      title: 'Devices & Supplies',
+      icon: <Monitor className="w-4 h-4 text-gray-500" />,
+      rows: DEVICES.map(d => ({
+        primary: d.name,
+        secondary: d.type,
+        tertiary: null,
+      })),
+    },
+    {
+      id: 'pharmacies',
+      title: 'Pharmacies',
+      icon: <Building2 className="w-4 h-4 text-gray-500" />,
+      rows: CARE_NETWORK.pharmacies.map(p => ({
+        primary: p.name,
+        secondary: p.address,
+        tertiary: p.phone,
+      })),
+    },
+    {
+      id: 'insurance',
+      title: 'Insurance',
+      icon: <Shield className="w-4 h-4 text-gray-500" />,
+      rows: [
+        { primary: 'Blue Shield PPO (Commercial)', secondary: 'Plan #BSC-PPO-2024-001 · Group #GRP-88412', tertiary: '1-800-541-6765' },
+      ],
+    },
+    {
+      id: 'manufacturer',
+      title: 'Manufacturer Support',
+      icon: <Phone className="w-4 h-4 text-gray-500" />,
+      rows: CARE_NETWORK.manufacturerSupport.map(m => ({
+        primary: m.name,
+        secondary: m.phone,
+        tertiary: null,
+      })),
+    },
+  ]
+
+  return (
+    <div className="max-w-3xl mx-auto px-6 py-8 space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Care Profile Settings</h2>
+        <p className="text-sm text-gray-500 mt-1">Review and update your care network details.</p>
+      </div>
+      {sections.map(section => (
+        <div key={section.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {section.icon}
+              <h3 className="font-semibold text-gray-900 text-sm">{section.title}</h3>
+            </div>
+            <button
+              onClick={() => setEditing(editing === section.id ? null : section.id)}
+              className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+                editing === section.id
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-500 border border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              {editing === section.id ? <><Check className="w-3 h-3" /> Save</> : <><Edit2 className="w-3 h-3" /> Edit</>}
+            </button>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {section.rows.map((row, i) => (
+              <div key={i} className="px-5 py-3.5">
+                {editing === section.id ? (
+                  <div className="space-y-1.5">
+                    <input defaultValue={row.primary} className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    {row.secondary && <input defaultValue={row.secondary} className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600" />}
+                    {row.tertiary && <input defaultValue={row.tertiary} className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600" />}
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-gray-900">{row.primary}</p>
+                    {row.secondary && <p className="text-xs text-gray-500 mt-0.5">{row.secondary}</p>}
+                    {row.tertiary && <p className="text-xs text-gray-500">{row.tertiary}</p>}
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Pharmacy Map tab ────────────────────────────────────────────────────────
+
+const PHARMACY_LOCATIONS = [
+  { chain: 'CVS', name: 'CVS Pharmacy', address: '1420 Market St', distance: '0.3 mi', hours: 'Open until 10 PM', inNetwork: true },
+  { chain: 'CVS', name: 'CVS Pharmacy', address: '2100 Mission St', distance: '0.8 mi', hours: 'Open until 9 PM', inNetwork: true },
+  { chain: 'CVS', name: 'CVS Pharmacy', address: '3701 18th St', distance: '1.1 mi', hours: 'Open until 10 PM', inNetwork: true },
+  { chain: 'Walgreens', name: 'Walgreens', address: '498 Castro St', distance: '0.5 mi', hours: 'Open 24 hours', inNetwork: true },
+  { chain: 'Walgreens', name: 'Walgreens', address: '1189 Potrero Ave', distance: '1.4 mi', hours: 'Open until 9 PM', inNetwork: true },
+  { chain: 'Walgreens', name: 'Walgreens', address: '3201 Divisadero St', distance: '1.7 mi', hours: 'Open until 10 PM', inNetwork: true },
+]
+
+function PharmacyMapTab() {
+  const [chain, setChain] = useState<'CVS' | 'Walgreens' | 'All'>('All')
+  const filtered = chain === 'All' ? PHARMACY_LOCATIONS : PHARMACY_LOCATIONS.filter(p => p.chain === chain)
+
+  return (
+    <div className="max-w-5xl mx-auto px-6 py-8 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Pharmacy Map</h2>
+          <p className="text-sm text-gray-500 mt-0.5">In-network pharmacies near San Francisco, CA</p>
+        </div>
+        <div className="flex gap-2">
+          {(['All', 'CVS', 'Walgreens'] as const).map(c => (
+            <button key={c} onClick={() => setChain(c)}
+              className={`text-sm px-4 py-1.5 rounded-full border transition-colors ${
+                chain === c ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+              }`}>
+              {c}
+            </button>
+          ))}
         </div>
       </div>
-    )
-  }
 
-  if (msg.type === 'amphelo') {
-    return (
-      <div className="flex justify-start">
-        <div
-          className="bg-gray-100 text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 text-sm max-w-md leading-relaxed"
-          dangerouslySetInnerHTML={{
-            __html: msg.content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'),
-          }}
-        />
+      <div className="grid grid-cols-5 gap-4 h-[480px]">
+        {/* Map placeholder */}
+        <div className="col-span-3 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden relative">
+          <iframe
+            title="pharmacy-map"
+            width="100%"
+            height="100%"
+            style={{ border: 0 }}
+            loading="lazy"
+            src={`https://maps.google.com/maps?q=${chain === 'All' ? 'pharmacy' : chain}+near+San+Francisco+CA&output=embed`}
+          />
+        </div>
+
+        {/* Pharmacy list */}
+        <div className="col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto">
+          <div className="px-4 py-3 border-b border-gray-100">
+            <p className="text-sm font-semibold text-gray-900">{filtered.length} locations found</p>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {filtered.map((p, i) => (
+              <div key={i} className="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{p.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{p.address}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{p.hours}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <span className="text-xs font-medium text-blue-600">{p.distance}</span>
+                    {p.inNetwork && (
+                      <div className="mt-1">
+                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">In-network</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
 
-  if (msg.type === 'pill-blue') {
-    return (
-      <div className="flex justify-start">
-        <span className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 text-xs px-3 py-1.5 rounded-full font-medium">
-          <Phone className="w-3 h-3" /> {msg.content}
-        </span>
+// ── Specialist Finder tab ───────────────────────────────────────────────────
+
+function SpecialistFinderTab() {
+  const [specialty, setSpecialty] = useState('Endocrinology')
+
+  return (
+    <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Specialist Finder</h2>
+        <p className="text-sm text-gray-500 mt-0.5">Specialists near you who accept Blue Shield PPO and are reviewed for T1D care.</p>
       </div>
-    )
-  }
 
-  if (msg.type === 'pill-amber') {
-    return (
-      <div className="flex justify-start">
-        <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-700 text-xs px-3 py-1.5 rounded-full font-medium">
-          <Phone className="w-3 h-3" /> {msg.content}
-        </span>
+      {/* Filters */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4 flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Specialty</label>
+          <select value={specialty} onChange={e => setSpecialty(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+            <option>Endocrinology</option>
+            <option>Ophthalmology</option>
+            <option>Primary Care</option>
+            <option>Nephrology</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Insurance</label>
+          <span className="text-sm text-gray-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg">Blue Shield PPO</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Location</label>
+          <span className="text-sm text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5 text-gray-400" /> San Francisco, CA
+          </span>
+        </div>
+        <span className="text-xs text-gray-400 ml-auto">{SPECIALISTS.length} results</span>
       </div>
-    )
-  }
 
-  if (msg.type === 'pill-green') {
-    return (
-      <div className="flex justify-start">
-        <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 text-xs px-3 py-1.5 rounded-full font-medium">
-          <CheckCircle2 className="w-3 h-3" /> {msg.content}
-        </span>
+      {/* Results */}
+      <div className="space-y-3">
+        {SPECIALISTS.map((s, i) => (
+          <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4 flex items-center gap-5">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Stethoscope className="w-5 h-5 text-blue-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-semibold text-gray-900">{s.name}</p>
+                {s.t1dSpecialized && (
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">T1D Specialized</span>
+                )}
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Accepts Blue Shield PPO</span>
+              </div>
+              <p className="text-xs text-gray-600 mt-0.5">{s.practice}</p>
+              <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                <MapPin className="w-3 h-3" /> {s.address} · {s.distance}
+              </p>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <div className="flex items-center gap-1 justify-end">
+                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                <span className="text-sm font-semibold text-gray-900">{s.rating}</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5">{s.reviews} reviews</p>
+              <button className="mt-2 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                Request Referral
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
-    )
-  }
-
-  return null
+    </div>
+  )
 }
