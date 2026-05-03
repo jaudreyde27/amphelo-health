@@ -15,8 +15,6 @@ const CARE_NETWORK = {
   medications: [
     'Humalog 100u/mL KwikPen',
     'Tresiba 100u/mL FlexTouch',
-    'Dexcom G7 Sensor 10-pack',
-    'Omnipod 5 Pods 10-pack',
   ],
   devices: ['Dexcom CGM Sensor G7', 'Omnipod Insulin Pump Pod 5'],
   pharmacies: [
@@ -193,7 +191,7 @@ function CareNetworkGrid() {
     },
     {
       icon: <Monitor className="w-3.5 h-3.5" />,
-      label: 'Devices',
+      label: 'Devices (Pharmacy)',
       bg: 'bg-sky-50',
       iconBg: 'bg-sky-100 text-sky-600',
       items: CARE_NETWORK.devices,
