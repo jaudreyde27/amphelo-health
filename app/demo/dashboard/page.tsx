@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Heart, User, Pill, Monitor, Building2, Shield, Phone, Send,
   CheckCircle2, AlertCircle, Calendar, Settings, Map, Stethoscope,
-  Star, MapPin, Edit2, Check, X,
+  Star, MapPin, Edit2, Check, X, LayoutDashboard,
 } from 'lucide-react'
 
 type Tab = 'dashboard' | 'requests' | 'pharmacy-map' | 'specialists' | 'settings'
@@ -119,13 +119,13 @@ function getScenario(text: string): ReqMsg[] {
 
 // ── Main component ──────────────────────────────────────────────────────────
 
-const TAB_LABELS: Record<Tab, string> = {
-  dashboard: 'Dashboard',
-  requests: 'Requests',
-  'pharmacy-map': 'Pharmacy Map',
-  specialists: 'Specialists',
-  settings: 'Settings',
-}
+const TABS: { key: Tab; label: string; shortLabel: string; icon: React.ReactNode }[] = [
+  { key: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: <LayoutDashboard className="w-4 h-4" /> },
+  { key: 'requests', label: 'Requests', shortLabel: 'Requests', icon: <Send className="w-4 h-4" /> },
+  { key: 'pharmacy-map', label: 'Pharmacy Map', shortLabel: 'Pharmacy', icon: <Map className="w-4 h-4" /> },
+  { key: 'specialists', label: 'Specialist Finder', shortLabel: 'Specialists', icon: <Stethoscope className="w-4 h-4" /> },
+  { key: 'settings', label: 'Settings', shortLabel: 'Settings', icon: <Settings className="w-4 h-4" /> },
+]
 
 export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>('dashboard')
@@ -133,34 +133,38 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] flex flex-col">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 sticky top-0 z-10">
+        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
           <Heart className="w-4 h-4 text-white fill-white" />
         </div>
         <span className="font-semibold text-gray-900">Amphelo</span>
         <div className="flex-1" />
-        <button onClick={() => router.push('/demo')} className="text-xs text-gray-400 hover:text-gray-600 transition-colors mr-3">
+        <button onClick={() => router.push('/demo')} className="text-xs text-gray-400 hover:text-gray-600 transition-colors mr-2 sm:mr-3 hidden sm:block">
           Back to Intake
         </button>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-blue-700 text-xs font-semibold">A</span>
           </div>
-          <span className="text-sm font-medium text-gray-700">Audrey</span>
+          <span className="text-sm font-medium text-gray-700 hidden sm:block">Audrey</span>
         </div>
       </header>
 
-      <div className="bg-white border-b border-gray-200 px-6 overflow-x-auto">
-        <div className="max-w-5xl mx-auto flex gap-0 min-w-max">
-          {(Object.keys(TAB_LABELS) as Tab[]).map(t => (
+      {/* Tab bar — scrollable on mobile, icon+label */}
+      <div className="bg-white border-b border-gray-200 overflow-x-auto flex-shrink-0">
+        <div className="flex min-w-max sm:max-w-5xl sm:mx-auto sm:px-6">
+          {TABS.map(t => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-5 py-3.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                tab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-1.5 px-4 sm:px-5 py-2.5 sm:py-3.5 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                tab === t.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              {TAB_LABELS[t]}
+              <span className="sm:hidden">{t.icon}</span>
+              <span className="sm:hidden text-[10px] leading-none">{t.shortLabel}</span>
+              <span className="hidden sm:block">{t.label}</span>
             </button>
           ))}
         </div>
@@ -181,7 +185,7 @@ export default function DashboardPage() {
 
 function DashboardTab() {
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
       <PhysiciansSection />
       <CareNetworkGrid />
       <CareItemsTracker />
@@ -193,17 +197,17 @@ function DashboardTab() {
 function PhysiciansSection() {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+      <div className="px-4 sm:px-5 py-4 border-b border-gray-100 flex items-center gap-2">
         <User className="w-4 h-4 text-gray-500" />
         <h3 className="font-semibold text-gray-900 text-sm">Care Team</h3>
       </div>
       <div className="divide-y divide-gray-50">
         {CARE_NETWORK.prescribers.map(p => (
-          <div key={p.name} className="px-5 py-4 flex items-start gap-5">
+          <div key={p.name} className="px-4 sm:px-5 py-4 flex items-start gap-3 sm:gap-5">
             <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
               <User className="w-4 h-4 text-blue-600" />
             </div>
-            <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-6 gap-y-0.5">
+            <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
               <div>
                 <p className="text-sm font-semibold text-gray-900">{p.name}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{p.specialty} · {p.system}</p>
@@ -212,11 +216,11 @@ function PhysiciansSection() {
                 <Phone className="w-3 h-3 text-gray-400 flex-shrink-0" />
                 <p className="text-xs text-gray-600">{p.phone}</p>
               </div>
-              <div className="flex items-center gap-1.5 mt-1">
-                <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              <div className="flex items-start gap-1.5">
+                <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-gray-500">{p.address}</p>
               </div>
-              <div className="flex items-center gap-1.5 mt-1">
+              <div className="flex items-center gap-1.5">
                 <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" />
                 <p className="text-xs text-gray-500">Recommended: <span className="font-medium text-gray-700">{p.visitFrequency}</span></p>
               </div>
@@ -268,12 +272,12 @@ function CareNetworkGrid() {
   ]
 
   return (
-    <div className="bg-white rounded-2xl border border-blue-200 shadow-sm p-6">
-      <div className="flex items-center gap-2 mb-5">
+    <div className="bg-white rounded-2xl border border-blue-200 shadow-sm p-4 sm:p-6">
+      <div className="flex items-center gap-2 mb-4 sm:mb-5">
         <Heart className="w-4 h-4 text-blue-600 fill-blue-600" />
         <h2 className="font-semibold text-gray-900">Your Care Network</h2>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {panels.map(panel => (
           <div key={panel.label} className={`${panel.bg} rounded-xl p-4 space-y-2`}>
             <div className="flex items-center gap-2">
@@ -282,16 +286,14 @@ function CareNetworkGrid() {
               </div>
               <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{panel.label}</span>
             </div>
-            {'custom' in panel ? panel.custom : (
-              <ul className="space-y-1">
-                {(panel.items ?? []).map((item, i) => (
-                  <li key={i} className="text-xs text-gray-700 flex gap-1.5">
-                    <span className="text-gray-400 flex-shrink-0">•</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ul className="space-y-1">
+              {panel.items.map((item, i) => (
+                <li key={i} className="text-xs text-gray-700 flex gap-1.5">
+                  <span className="text-gray-400 flex-shrink-0">•</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         ))}
       </div>
@@ -304,13 +306,13 @@ function CareItemsTracker() {
     <div className="space-y-4">
       {/* Prescriptions */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+        <div className="px-4 sm:px-5 py-4 border-b border-gray-100 flex items-center gap-2">
           <Pill className="w-4 h-4 text-gray-500" />
           <h3 className="font-semibold text-gray-900 text-sm">Prescriptions</h3>
         </div>
         <div className="divide-y divide-gray-50">
           {PRESCRIPTIONS.map(rx => (
-            <div key={rx.name} className="px-5 py-4 flex items-center gap-4">
+            <div key={rx.name} className="px-4 sm:px-5 py-4 flex flex-wrap items-center gap-3 sm:gap-4">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900">{rx.name}</p>
                 <p className="text-xs text-gray-500">{rx.format}</p>
@@ -335,13 +337,13 @@ function CareItemsTracker() {
 
       {/* Devices */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+        <div className="px-4 sm:px-5 py-4 border-b border-gray-100 flex items-center gap-2">
           <Monitor className="w-4 h-4 text-gray-500" />
           <h3 className="font-semibold text-gray-900 text-sm">Devices</h3>
         </div>
         <div className="divide-y divide-gray-50">
           {DEVICES.map(d => (
-            <div key={d.name} className="px-5 py-4 flex items-center gap-4">
+            <div key={d.name} className="px-4 sm:px-5 py-4 flex flex-wrap items-center gap-3 sm:gap-4">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900">{d.name}</p>
                 <p className="text-xs text-gray-500">{d.type}</p>
@@ -366,14 +368,14 @@ function CareItemsTracker() {
 
       {/* Appointments */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+        <div className="px-4 sm:px-5 py-4 border-b border-gray-100 flex items-center gap-2">
           <Calendar className="w-4 h-4 text-gray-500" />
           <h3 className="font-semibold text-gray-900 text-sm">Appointments</h3>
         </div>
         <div className="divide-y divide-gray-50">
           {APPOINTMENTS.map(a => (
-            <div key={a.doctor} className="px-5 py-4 flex items-center gap-4">
-              <div className="flex-1">
+            <div key={a.doctor} className="px-4 sm:px-5 py-4 flex flex-wrap items-center gap-3 sm:gap-4">
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900">{a.doctor}</p>
                 <p className="text-xs text-gray-500">{a.specialty}</p>
               </div>
@@ -407,14 +409,14 @@ function CareItemsTracker() {
 function RecentRequestsPreview() {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div className="px-4 sm:px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h3 className="font-semibold text-gray-900 text-sm">Recent Requests</h3>
         <span className="text-xs text-gray-400">Last 3</span>
       </div>
       <div className="divide-y divide-gray-50">
         {RECENT_REQUESTS.map(r => (
-          <div key={r.id} className="px-5 py-4 flex items-start gap-4">
-            <div className="mt-0.5">
+          <div key={r.id} className="px-4 sm:px-5 py-4 flex items-start gap-3 sm:gap-4">
+            <div className="mt-0.5 flex-shrink-0">
               {r.status === 'resolved'
                 ? <CheckCircle2 className="w-4 h-4 text-green-500" />
                 : <AlertCircle className="w-4 h-4 text-amber-500" />}
@@ -482,13 +484,13 @@ function RequestsTab() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-6 flex flex-col" style={{ height: 'calc(100vh - 121px)' }}>
+    <div className="flex flex-col flex-1 h-full max-w-3xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6" style={{ height: 'calc(100dvh - 108px)' }}>
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col flex-1 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+        <div className="px-4 sm:px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
           <h3 className="font-semibold text-gray-900">Ad Hoc Requests</h3>
           <span className="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full font-medium">Coordinator ready</span>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-3">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 sm:py-5 space-y-3">
           {messages.map(msg => <ChatBubble key={msg.id} msg={msg} />)}
           {isTyping && (
             <div className="flex justify-start">
@@ -503,20 +505,20 @@ function RequestsTab() {
           )}
           <div ref={bottomRef} />
         </div>
-        <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0">
-          <div className="flex gap-3 items-end">
+        <div className="px-4 sm:px-5 py-3 sm:py-4 border-t border-gray-100 flex-shrink-0">
+          <div className="flex gap-2 sm:gap-3 items-end">
             <textarea rows={1} value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
-              placeholder="Describe what's going on and I'll handle it..."
+              placeholder="Describe what's going on..."
               disabled={busy}
-              className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className="flex-1 border border-gray-300 rounded-xl px-3 sm:px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             />
             <button onClick={handleSubmit} disabled={!input.trim() || busy}
               className="bg-blue-600 text-white rounded-xl p-2.5 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0">
               <Send className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-2 text-center">
+          <p className="text-xs text-gray-400 mt-2 text-center hidden sm:block">
             Try: "my G7 sensor just failed" · "I need an insulin refill" · "reschedule my endo appointment"
           </p>
         </div>
@@ -528,12 +530,12 @@ function RequestsTab() {
 function ChatBubble({ msg }: { msg: ReqMsg }) {
   if (msg.type === 'user') return (
     <div className="flex justify-end">
-      <div className="bg-blue-600 text-white rounded-2xl rounded-br-sm px-4 py-3 text-sm max-w-md leading-relaxed">{msg.content}</div>
+      <div className="bg-blue-600 text-white rounded-2xl rounded-br-sm px-4 py-3 text-sm max-w-xs sm:max-w-md leading-relaxed">{msg.content}</div>
     </div>
   )
   if (msg.type === 'amphelo') return (
     <div className="flex justify-start">
-      <div className="bg-gray-100 text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 text-sm max-w-md leading-relaxed"
+      <div className="bg-gray-100 text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 text-sm max-w-xs sm:max-w-md leading-relaxed"
         dangerouslySetInnerHTML={{ __html: msg.content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
     </div>
   )
@@ -628,14 +630,14 @@ function SettingsTab() {
   ]
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8 space-y-4">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Care Profile Settings</h2>
         <p className="text-sm text-gray-500 mt-1">Review and update your care network details.</p>
       </div>
       {sections.map(section => (
         <div key={section.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="px-4 sm:px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
               {section.icon}
               <h3 className="font-semibold text-gray-900 text-sm">{section.title}</h3>
@@ -653,7 +655,7 @@ function SettingsTab() {
           </div>
           <div className="divide-y divide-gray-50">
             {section.rows.map((row, i) => (
-              <div key={i} className="px-5 py-3.5">
+              <div key={i} className="px-4 sm:px-5 py-3.5">
                 {editing === section.id ? (
                   <div className="space-y-1.5">
                     <input defaultValue={row.primary} className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -686,15 +688,15 @@ const PHARMACY_LOCATIONS = [
 
 function PharmacyMapTab() {
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 space-y-4">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Pharmacy Map</h2>
         <p className="text-sm text-gray-500 mt-0.5">CVS Pharmacy locations near San Francisco, CA</p>
       </div>
 
-      <div className="grid grid-cols-5 gap-4 h-[480px]">
+      <div className="flex flex-col lg:grid lg:grid-cols-5 gap-4">
         {/* Map */}
-        <div className="col-span-3 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden relative">
+        <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden h-64 sm:h-80 lg:h-[480px]">
           <iframe
             title="pharmacy-map"
             width="100%"
@@ -706,7 +708,7 @@ function PharmacyMapTab() {
         </div>
 
         {/* Pharmacy list */}
-        <div className="col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto lg:h-[480px]">
           <div className="px-4 py-3 border-b border-gray-100">
             <p className="text-sm font-semibold text-gray-900">{PHARMACY_LOCATIONS.length} locations found</p>
           </div>
@@ -743,18 +745,18 @@ function SpecialistFinderTab() {
   const [specialty, setSpecialty] = useState('Endocrinology')
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4 sm:space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Specialist Finder</h2>
         <p className="text-sm text-gray-500 mt-0.5">Specialists near you who accept Blue Shield PPO and are reviewed for T1D care.</p>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4 flex items-center gap-4 flex-wrap">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 sm:px-5 py-4 flex flex-wrap items-center gap-3 sm:gap-4">
         <div className="flex items-center gap-2">
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Specialty</label>
           <select value={specialty} onChange={e => setSpecialty(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+            className="border border-gray-300 rounded-lg px-2.5 sm:px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
             <option>Endocrinology</option>
             <option>Ophthalmology</option>
             <option>Primary Care</option>
@@ -763,47 +765,51 @@ function SpecialistFinderTab() {
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Insurance</label>
-          <span className="text-sm text-gray-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg">Blue Shield PPO</span>
+          <span className="text-xs sm:text-sm text-gray-700 bg-blue-50 border border-blue-200 px-2.5 sm:px-3 py-1.5 rounded-lg">Blue Shield PPO</span>
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Location</label>
-          <span className="text-sm text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-gray-400" /> San Francisco, CA
+          <span className="text-xs sm:text-sm text-gray-700 bg-gray-50 border border-gray-200 px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1">
+            <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400" /> San Francisco, CA
           </span>
         </div>
-        <span className="text-xs text-gray-400 ml-auto">{SPECIALISTS.length} results</span>
+        <span className="text-xs text-gray-400 sm:ml-auto">{SPECIALISTS.length} results</span>
       </div>
 
       {/* Results */}
       <div className="space-y-3">
         {SPECIALISTS.map((s, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4 space-y-3">
-            <div className="flex items-start gap-5">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Stethoscope className="w-5 h-5 text-blue-600" />
+          <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 sm:px-5 py-4 space-y-3">
+            <div className="flex items-start gap-3 sm:gap-5">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Stethoscope className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-semibold text-gray-900">{s.name}</p>
-                  {s.t1dSpecialized && (
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">T1D Specialized</span>
-                  )}
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Accepts Blue Shield PPO</span>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-gray-900">{s.name}</p>
+                      {s.t1dSpecialized && (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">T1D Specialized</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600 mt-0.5">{s.practice}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 flex-shrink-0" /> {s.address} · {s.distance}
+                    </p>
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium mt-1 inline-block">Accepts Blue Shield PPO</span>
+                  </div>
+                  <div className="text-right flex-shrink-0 ml-2">
+                    <div className="flex items-center gap-1 justify-end">
+                      <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                      <span className="text-sm font-semibold text-gray-900">{s.rating}</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">{s.reviews} reviews</p>
+                    <button className="mt-2 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium whitespace-nowrap">
+                      Request Referral
+                    </button>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-600 mt-0.5">{s.practice}</p>
-                <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
-                  <MapPin className="w-3 h-3" /> {s.address} · {s.distance}
-                </p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <div className="flex items-center gap-1 justify-end">
-                  <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                  <span className="text-sm font-semibold text-gray-900">{s.rating}</span>
-                </div>
-                <p className="text-xs text-gray-400 mt-0.5">{s.reviews} reviews</p>
-                <button className="mt-2 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                  Request Referral
-                </button>
               </div>
             </div>
             <div className={`rounded-xl px-4 py-3 border-l-2 ${s.t1dSpecialized ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-200'}`}>
