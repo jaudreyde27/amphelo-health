@@ -19,7 +19,7 @@ const CARE_NETWORK = {
     { name: 'Dr. Sarah Kim', specialty: 'Ophthalmology', system: 'Mount Sinai', address: '17 E 102nd St, New York, NY 10029', phone: '(212) 241-8500', visitFrequency: 'Annually' },
   ],
   medications: ['Humalog 10mL Vial', 'Spironolactone 25mg tablet'],
-  devices: ['Dexcom CGM Sensor G7', 'Omnipod Insulin Pump Pod 5'],
+  devices: ['Dexcom CGM Sensor 15-Day', 'Omnipod Insulin Pump Pod 5'],
   pharmacies: [
     { name: 'CVS Pharmacy', address: '1420 Market St, San Francisco, CA 94102', phone: '(415) 842-7700' },
   ],
@@ -36,7 +36,7 @@ const PRESCRIPTIONS = [
 ]
 
 const DEVICES = [
-  { name: 'Dexcom G7 Sensors (3-pack)', type: 'CGM Sensor Supply', nextRefill: 'Jun 30, 2026', daysAway: 58, status: 'on-track' as const, agentNote: null },
+  { name: 'Dexcom CGM Sensor 15-Day (3-pack)', type: 'CGM Sensor Supply', nextRefill: 'Jun 30, 2026', daysAway: 58, status: 'on-track' as const, agentNote: null },
   { name: 'Omnipod 5 Pods (2×5-pack)', type: 'Pump Supply', nextRefill: 'May 10, 2026', daysAway: 7, status: 'due-soon' as const, agentNote: 'Refill request queued' },
 ]
 
