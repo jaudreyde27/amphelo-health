@@ -8,6 +8,7 @@ interface Msg { id: string; role: 'amphelo' | 'user'; content: string }
 interface PersonalInfo { fullName: string; dob: string; street: string; city: string; state: string; zip: string }
 interface Rx { name: string; format: string; frequency: string; lastFilled: string }
 interface Device { type: string; brand: string; model: string; hasSupply: boolean }
+interface DoctorInfo { name: string; specialty: string; system: string; address: string; phone: string; visitFrequency: string }
 interface PharmacyInfo { name: string; isChain: boolean | null; address: string; phone: string }
 interface InsuranceInfo { name: string; plan: string; group: string; phone: string }
 
@@ -60,10 +61,10 @@ export default function IntakePage() {
   const [deviceServiceLine, setDeviceServiceLine] = useState('')
 
   // Doctors
-  const [endoVal, setEndoVal] = useState('Dr. Anita Patel (Endocrinology)')
-  const [pcpVal, setPcpVal] = useState('Dr. James Liu (Primary Care)')
-  const [ophthoPhase, setOphthoPhase] = useState<'yn' | 'name'>('yn')
-  const [ophthoVal, setOphthoVal] = useState('Dr. Sarah Kim (Ophthalmology)')
+  const [endo, setEndo] = useState<DoctorInfo>({ name: 'Dr. Anita Patel', specialty: 'Endocrinology', system: 'Mount Sinai', address: '1 Gustave L. Levy Pl, New York, NY 10029', phone: '(212) 241-6500', visitFrequency: 'Every 3 months' })
+  const [pcp, setPcp] = useState<DoctorInfo>({ name: 'Dr. James Liu', specialty: 'Primary Care', system: 'Mount Sinai', address: '17 E 102nd St, New York, NY 10029', phone: '(212) 241-7000', visitFrequency: 'Every 6 months' })
+  const [ophthoPhase, setOphthoPhase] = useState<'yn' | 'form'>('yn')
+  const [ophtho, setOphtho] = useState<DoctorInfo>({ name: 'Dr. Sarah Kim', specialty: 'Ophthalmology', system: 'Mount Sinai', address: '17 E 102nd St, New York, NY 10029', phone: '(212) 241-8500', visitFrequency: 'Annually' })
 
   // Pharmacy
   const [pharmacy, setPharmacy] = useState<PharmacyInfo>({
@@ -162,18 +163,21 @@ export default function IntakePage() {
   }
 
   const handleDeviceServiceLine = () =>
-    go(deviceServiceLine, 6, "Now let's map your care team. Who is your endocrinologist or diabetes specialist?")
+    go(deviceServiceLine, 6, "Now let's map your care team. Tell me about your endocrinologist or diabetes specialist.")
+
+  const doctorSummary = (d: DoctorInfo) =>
+    `${d.name} · ${d.specialty} · ${d.system} · ${d.address} · ${d.phone} · ${d.visitFrequency}`
 
   const handleEndo = () =>
-    go(endoVal, 7, 'And your primary care physician?')
+    go(doctorSummary(endo), 7, 'And your primary care physician?')
 
   const handlePcp = () =>
-    go(pcpVal, 8, 'T1D patients often benefit from annual eye exams. Do you have an ophthalmologist on your care team?')
+    go(doctorSummary(pcp), 8, 'T1D patients often benefit from annual eye exams. Do you have an ophthalmologist on your care team?')
 
-  const handleOphthoYes = () => setOphthoPhase('name')
+  const handleOphthoYes = () => setOphthoPhase('form')
 
   const handleOphthoName = () =>
-    go(ophthoVal, 9, 'Where do you get your prescriptions filled? Tell me about your pharmacy.')
+    go(doctorSummary(ophtho), 9, 'Where do you get your prescriptions filled? Tell me about your pharmacy.')
 
   const handlePharmacy = () => {
     const { name, isChain, address, phone } = pharmacy
@@ -475,12 +479,12 @@ export default function IntakePage() {
 
           {/* Step 6: Endo */}
           {step === 6 && (
-            <TextConfirmInput value={endoVal} onChange={setEndoVal} onSubmit={handleEndo} />
+            <DoctorFormCard doctor={endo} onChange={setEndo} onSubmit={handleEndo} autoFocus />
           )}
 
           {/* Step 7: PCP */}
           {step === 7 && (
-            <TextConfirmInput value={pcpVal} onChange={setPcpVal} onSubmit={handlePcp} />
+            <DoctorFormCard doctor={pcp} onChange={setPcp} onSubmit={handlePcp} autoFocus />
           )}
 
           {/* Step 8: Ophthalmologist */}
@@ -495,8 +499,8 @@ export default function IntakePage() {
               </button>
             </div>
           )}
-          {step === 8 && ophthoPhase === 'name' && (
-            <TextConfirmInput value={ophthoVal} onChange={setOphthoVal} onSubmit={handleOphthoName} />
+          {step === 8 && ophthoPhase === 'form' && (
+            <DoctorFormCard doctor={ophtho} onChange={setOphtho} onSubmit={handleOphthoName} autoFocus />
           )}
 
           {/* Step 9: Pharmacy form card */}
@@ -667,6 +671,70 @@ export default function IntakePage() {
 
           <div ref={bottomRef} />
         </div>
+      </div>
+    </div>
+  )
+}
+
+const VISIT_FREQUENCIES = ['Every month', 'Every 3 months', 'Every 6 months', 'Annually', 'As needed']
+
+function DoctorFormCard({
+  doctor,
+  onChange,
+  onSubmit,
+  autoFocus,
+}: {
+  doctor: DoctorInfo
+  onChange: (d: DoctorInfo) => void
+  onSubmit: () => void
+  autoFocus?: boolean
+}) {
+  const set = (field: keyof DoctorInfo) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    onChange({ ...doctor, [field]: e.target.value })
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 space-y-1">
+          <label className={LABEL_CLS}>Physician name</label>
+          <input autoFocus={autoFocus} value={doctor.name} onChange={set('name')}
+            placeholder="Dr. Anita Patel" className={INPUT_CLS} />
+        </div>
+        <div className="space-y-1">
+          <label className={LABEL_CLS}>Specialty</label>
+          <input value={doctor.specialty} onChange={set('specialty')}
+            placeholder="Endocrinology" className={INPUT_CLS} />
+        </div>
+        <div className="space-y-1">
+          <label className={LABEL_CLS}>Health system / Practice</label>
+          <input value={doctor.system} onChange={set('system')}
+            placeholder="Mount Sinai" className={INPUT_CLS} />
+        </div>
+        <div className="col-span-2 space-y-1">
+          <label className={LABEL_CLS}>Office address</label>
+          <input value={doctor.address} onChange={set('address')}
+            placeholder="1 Gustave L. Levy Pl, New York, NY 10029" className={INPUT_CLS} />
+        </div>
+        <div className="space-y-1">
+          <label className={LABEL_CLS}>Phone number</label>
+          <input value={doctor.phone} onChange={set('phone')}
+            placeholder="(212) 241-6500" className={INPUT_CLS} />
+        </div>
+        <div className="space-y-1">
+          <label className={LABEL_CLS}>Recommended visit frequency</label>
+          <div className="relative">
+            <select value={doctor.visitFrequency} onChange={set('visitFrequency')}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white pr-8">
+              {VISIT_FREQUENCIES.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <button onClick={onSubmit} className={PRIMARY_BTN}>
+          Continue <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
     </div>
   )
