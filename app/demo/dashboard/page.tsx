@@ -186,7 +186,6 @@ export default function DashboardPage() {
 function DashboardTab() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
-      <PhysiciansSection />
       <CareNetworkGrid />
       <CareItemsTracker />
       <RecentRequestsPreview />
@@ -194,46 +193,26 @@ function DashboardTab() {
   )
 }
 
-function PhysiciansSection() {
-  return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="px-4 sm:px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-        <User className="w-4 h-4 text-gray-500" />
-        <h3 className="font-semibold text-gray-900 text-sm">Care Team</h3>
-      </div>
-      <div className="divide-y divide-gray-50">
-        {CARE_NETWORK.prescribers.map(p => (
-          <div key={p.name} className="px-4 sm:px-5 py-4 flex items-start gap-3 sm:gap-5">
-            <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <User className="w-4 h-4 text-blue-600" />
-            </div>
-            <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{p.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{p.specialty} · {p.system}</p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Phone className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                <p className="text-xs text-gray-600">{p.phone}</p>
-              </div>
-              <div className="flex items-start gap-1.5">
-                <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-gray-500">{p.address}</p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                <p className="text-xs text-gray-500">Recommended: <span className="font-medium text-gray-700">{p.visitFrequency}</span></p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function CareNetworkGrid() {
   const panels = [
+    {
+      icon: <User className="w-3.5 h-3.5" />,
+      label: 'Care Team',
+      bg: 'bg-blue-50',
+      iconBg: 'bg-blue-100 text-blue-600',
+      custom: (
+        <ul className="space-y-2.5">
+          {CARE_NETWORK.prescribers.map((p, i) => (
+            <li key={i} className="text-xs text-gray-700 space-y-0.5">
+              <p className="font-semibold text-gray-900">{p.name}</p>
+              <p className="text-gray-500">{p.specialty} · {p.system}</p>
+              <p className="text-gray-500">{p.phone}</p>
+              <p className="text-gray-400">Every visit: {p.visitFrequency}</p>
+            </li>
+          ))}
+        </ul>
+      ),
+    },
     {
       icon: <Pill className="w-3.5 h-3.5" />,
       label: 'Medications',
@@ -277,23 +256,25 @@ function CareNetworkGrid() {
         <Heart className="w-4 h-4 text-blue-600 fill-blue-600" />
         <h2 className="font-semibold text-gray-900">Your Care Network</h2>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {panels.map(panel => (
-          <div key={panel.label} className={`${panel.bg} rounded-xl p-4 space-y-2`}>
+          <div key={panel.label} className={`${panel.bg} rounded-xl p-3 sm:p-4 space-y-2`}>
             <div className="flex items-center gap-2">
-              <div className={`w-6 h-6 rounded-md flex items-center justify-center ${panel.iconBg}`}>
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${panel.iconBg}`}>
                 {panel.icon}
               </div>
-              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{panel.label}</span>
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide leading-tight">{panel.label}</span>
             </div>
-            <ul className="space-y-1">
-              {panel.items.map((item, i) => (
-                <li key={i} className="text-xs text-gray-700 flex gap-1.5">
-                  <span className="text-gray-400 flex-shrink-0">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+            {'custom' in panel ? panel.custom : (
+              <ul className="space-y-1">
+                {(panel.items ?? []).map((item, i) => (
+                  <li key={i} className="text-xs text-gray-700 flex gap-1.5">
+                    <span className="text-gray-400 flex-shrink-0">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         ))}
       </div>
