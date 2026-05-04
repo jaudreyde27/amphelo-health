@@ -14,9 +14,9 @@ type Tab = 'dashboard' | 'requests' | 'pharmacy-map' | 'specialists' | 'settings
 
 const CARE_NETWORK = {
   prescribers: [
-    { name: 'Dr. Anita Patel', specialty: 'Endocrinology', system: 'Mount Sinai', phone: '(212) 241-6500' },
-    { name: 'Dr. James Liu', specialty: 'Primary Care', system: 'Mount Sinai', phone: '(212) 241-7000' },
-    { name: 'Dr. Sarah Kim', specialty: 'Ophthalmology', system: 'Mount Sinai', phone: '(212) 241-8500' },
+    { name: 'Dr. Anita Patel', specialty: 'Endocrinology', system: 'Mount Sinai', address: '1 Gustave L. Levy Pl, New York, NY 10029', phone: '(212) 241-6500', visitFrequency: 'Every 3 months' },
+    { name: 'Dr. James Liu', specialty: 'Primary Care', system: 'Mount Sinai', address: '17 E 102nd St, New York, NY 10029', phone: '(212) 241-7000', visitFrequency: 'Every 6 months' },
+    { name: 'Dr. Sarah Kim', specialty: 'Ophthalmology', system: 'Mount Sinai', address: '17 E 102nd St, New York, NY 10029', phone: '(212) 241-8500', visitFrequency: 'Annually' },
   ],
   medications: ['Humalog 100u/mL KwikPen', 'Tresiba 100u/mL FlexTouch'],
   devices: ['Dexcom CGM Sensor G7', 'Omnipod Insulin Pump Pod 5'],
@@ -182,6 +182,7 @@ export default function DashboardPage() {
 function DashboardTab() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+      <PhysiciansSection />
       <CareNetworkGrid />
       <CareItemsTracker />
       <RecentRequestsPreview />
@@ -189,25 +190,46 @@ function DashboardTab() {
   )
 }
 
+function PhysiciansSection() {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+        <User className="w-4 h-4 text-gray-500" />
+        <h3 className="font-semibold text-gray-900 text-sm">Care Team</h3>
+      </div>
+      <div className="divide-y divide-gray-50">
+        {CARE_NETWORK.prescribers.map(p => (
+          <div key={p.name} className="px-5 py-4 flex items-start gap-5">
+            <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <User className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-6 gap-y-0.5">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{p.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{p.specialty} · {p.system}</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Phone className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                <p className="text-xs text-gray-600">{p.phone}</p>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1">
+                <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                <p className="text-xs text-gray-500">{p.address}</p>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1">
+                <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                <p className="text-xs text-gray-500">Recommended: <span className="font-medium text-gray-700">{p.visitFrequency}</span></p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function CareNetworkGrid() {
   const panels = [
-    {
-      icon: <User className="w-3.5 h-3.5" />,
-      label: 'Prescribers',
-      bg: 'bg-blue-50',
-      iconBg: 'bg-blue-100 text-blue-600',
-      custom: (
-        <ul className="space-y-2">
-          {CARE_NETWORK.prescribers.map((p, i) => (
-            <li key={i} className="text-xs text-gray-700">
-              <div className="flex gap-1.5"><span className="text-gray-400">•</span><span className="font-medium">{p.name}</span></div>
-              <div className="ml-3.5 text-gray-500">{p.specialty} · {p.system}</div>
-              <div className="ml-3.5 text-gray-500">{p.phone}</div>
-            </li>
-          ))}
-        </ul>
-      ),
-    },
     {
       icon: <Pill className="w-3.5 h-3.5" />,
       label: 'Medications',
@@ -551,8 +573,8 @@ function SettingsTab() {
       icon: <User className="w-4 h-4 text-gray-500" />,
       rows: CARE_NETWORK.prescribers.map(p => ({
         primary: p.name,
-        secondary: `${p.specialty} · ${p.system}`,
-        tertiary: p.phone,
+        secondary: `${p.specialty} · ${p.system} · ${p.visitFrequency}`,
+        tertiary: `${p.address} · ${p.phone}`,
       })),
     },
     {
