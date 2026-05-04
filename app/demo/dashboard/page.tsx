@@ -662,56 +662,116 @@ function SettingsTab() {
 // ── Pharmacy Map tab ────────────────────────────────────────────────────────
 
 const PHARMACY_LOCATIONS = [
-  { name: 'CVS Pharmacy', address: '1420 Market St', distance: '0.3 mi', hours: 'Open until 10 PM', inNetwork: true },
-  { name: 'CVS Pharmacy', address: '2100 Mission St', distance: '0.8 mi', hours: 'Open until 9 PM', inNetwork: true },
-  { name: 'CVS Pharmacy', address: '3701 18th St', distance: '1.1 mi', hours: 'Open until 10 PM', inNetwork: true },
+  { name: 'CVS Pharmacy', address: '1420 Market St, San Francisco, CA 94102', phone: '(415) 842-7700', distance: '0.3 mi', hours: 'Open until 10 PM', inNetwork: true },
+  { name: 'CVS Pharmacy', address: '2100 Mission St, San Francisco, CA 94110', phone: '(415) 826-5000', distance: '0.8 mi', hours: 'Open until 9 PM', inNetwork: true },
+  { name: 'CVS Pharmacy', address: '3701 18th St, San Francisco, CA 94114', phone: '(415) 861-4300', distance: '1.1 mi', hours: 'Open until 10 PM', inNetwork: true },
 ]
 
 function PharmacyMapTab() {
+  const [zip, setZip] = useState('94102')
+  const [activeZip, setActiveZip] = useState('94102')
+  const [selected, setSelected] = useState<number | null>(null)
+
+  const mapSrc = selected !== null
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(PHARMACY_LOCATIONS[selected].address)}&output=embed`
+    : `https://maps.google.com/maps?q=CVS+Pharmacy+near+${activeZip}&output=embed`
+
+  const handleSearch = () => {
+    const trimmed = zip.trim()
+    if (!trimmed) return
+    setActiveZip(trimmed)
+    setSelected(null)
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900">Pharmacy Map</h2>
-        <p className="text-sm text-gray-500 mt-0.5">CVS Pharmacy locations near San Francisco, CA</p>
+      {/* Header + zip search */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+        <div className="flex-1">
+          <h2 className="text-lg font-semibold text-gray-900">Pharmacy Map</h2>
+          <p className="text-sm text-gray-500 mt-0.5">In-network CVS locations near you</p>
+        </div>
+        <div className="flex gap-2">
+          <input
+            value={zip}
+            onChange={e => setZip(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            placeholder="Enter ZIP code"
+            maxLength={10}
+            className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
+          />
+          <button
+            onClick={handleSearch}
+            className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-medium hover:bg-blue-700 transition-colors whitespace-nowrap"
+          >
+            Search
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col lg:grid lg:grid-cols-5 gap-4">
-        {/* Map */}
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden h-64 sm:h-80 lg:h-[480px]">
+        {/* Map — updates to zip area, or pins the selected pharmacy */}
+        <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden h-64 sm:h-80 lg:h-[460px]">
           <iframe
+            key={mapSrc}
             title="pharmacy-map"
             width="100%"
             height="100%"
             style={{ border: 0 }}
             loading="lazy"
-            src="https://maps.google.com/maps?q=CVS+Pharmacy+San+Francisco+CA&output=embed"
+            src={mapSrc}
           />
         </div>
 
         {/* Pharmacy list */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto lg:h-[480px]">
-          <div className="px-4 py-3 border-b border-gray-100">
-            <p className="text-sm font-semibold text-gray-900">{PHARMACY_LOCATIONS.length} locations found</p>
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto lg:h-[460px]">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <p className="text-sm font-semibold text-gray-900">{PHARMACY_LOCATIONS.length} locations near {activeZip}</p>
+            {selected !== null && (
+              <button onClick={() => setSelected(null)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                Show all
+              </button>
+            )}
           </div>
           <div className="divide-y divide-gray-50">
             {PHARMACY_LOCATIONS.map((p, i) => (
-              <div key={i} className="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{p.address}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{p.hours}</p>
+              <button
+                key={i}
+                onClick={() => setSelected(selected === i ? null : i)}
+                className={`w-full text-left px-4 py-4 transition-colors ${
+                  selected === i ? 'bg-blue-50' : 'hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold ${
+                      selected === i ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {i + 1}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{p.name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{p.address}</p>
+                      {selected === i && (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-xs text-gray-700 flex items-center gap-1.5">
+                            <Phone className="w-3 h-3 text-gray-400 flex-shrink-0" /> {p.phone}
+                          </p>
+                          <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                            <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" /> {p.hours}
+                          </p>
+                          {p.inNetwork && (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium inline-block mt-1">
+                              In-network
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <span className="text-xs font-medium text-blue-600">{p.distance}</span>
-                    {p.inNetwork && (
-                      <div className="mt-1">
-                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">In-network</span>
-                      </div>
-                    )}
-                  </div>
+                  <span className="text-xs font-medium text-blue-600 flex-shrink-0">{p.distance}</span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
