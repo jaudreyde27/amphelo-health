@@ -376,6 +376,9 @@ function CareItemsTracker() {
                     <p className="text-xs text-gray-400 mt-0.5">in {a.daysAway} days</p>
                   </div>
                   <span className="bg-green-100 text-green-700 text-xs px-2.5 py-1 rounded-full font-medium">Confirmed</span>
+                  <button className="text-xs font-medium text-blue-600 border border-blue-300 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors">
+                    Reschedule Now
+                  </button>
                 </>
               )}
             </div>
