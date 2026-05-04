@@ -22,7 +22,6 @@ const CARE_NETWORK = {
   devices: ['Dexcom CGM Sensor G7', 'Omnipod Insulin Pump Pod 5'],
   pharmacies: [
     { name: 'CVS Pharmacy', address: '1420 Market St, San Francisco, CA 94102', phone: '(415) 842-7700' },
-    { name: 'Walgreens', address: '498 Castro St, San Francisco, CA 94114', phone: '(415) 931-4450' },
   ],
   insurance: ['Blue Shield PPO (Commercial) — Medical + Pharmacy'],
   manufacturerSupport: [
