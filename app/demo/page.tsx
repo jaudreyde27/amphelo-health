@@ -71,6 +71,9 @@ export default function IntakePage() {
     address: '1420 Market St, San Francisco, CA 94102', phone: '(415) 842-7700',
   })
 
+  // Pharmacy pickup confirmation
+  const [pharmacyPickup, setPharmacyPickup] = useState<Record<string, boolean>>({})
+
   // Insurance
   const [primaryIns, setPrimaryIns] = useState<InsuranceInfo>({
     name: 'Blue Shield PPO', plan: 'BSC-PPO-2024-001', group: 'GRP-88412', phone: '1-800-541-6765',
@@ -175,9 +178,26 @@ export default function IntakePage() {
   const handlePharmacy = () => {
     const { name, isChain, address, phone } = pharmacy
     const summary = `${name}${isChain ? ' (chain)' : ''} · ${address} · ${phone}`
+    const allItems: Record<string, boolean> = {}
+    rxList.forEach(rx => { allItems[rx.name] = true })
+    deviceList.forEach(d => { allItems[`${d.brand} ${d.model} (${d.type})`] = true })
+    setPharmacyPickup(allItems)
+    addMsg('user', summary)
+    setStep(-1)
+    ampheloSays(
+      `Got it. Which of your prescriptions and device supplies do you pick up from ${name}?`,
+      () => setStep(10)
+    )
+  }
+
+  const handlePharmacyPickup = () => {
+    const picked = Object.entries(pharmacyPickup).filter(([, v]) => v).map(([k]) => k)
+    const notPicked = Object.entries(pharmacyPickup).filter(([, v]) => !v).map(([k]) => k)
+    let summary = `Picks up from ${pharmacy.name}: ${picked.join(', ')}`
+    if (notPicked.length) summary += `\nNot from this pharmacy: ${notPicked.join(', ')}`
     go(
       summary,
-      10,
+      11,
       "Last step — insurance. Please list your primary insurance and secondary if applicable, including plan name, plan number, group number, and customer service number."
     )
   }
@@ -190,7 +210,7 @@ export default function IntakePage() {
     const firstName = info.fullName.split(' ')[0] || 'there'
     go(
       summary,
-      11,
+      12,
       `Perfect — your care map is complete, ${firstName}. I'll use this to proactively manage your care, handling refills, device issues, prior auths, and more before you ever have to think about them.`
     )
   }
@@ -522,8 +542,35 @@ export default function IntakePage() {
             </div>
           )}
 
-          {/* Step 10: Insurance form */}
+          {/* Step 10: Pharmacy pickup confirmation */}
           {step === 10 && (
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+              <p className="text-xs text-gray-500">Select all that apply — uncheck anything you get elsewhere.</p>
+              <div className="space-y-2">
+                {Object.entries(pharmacyPickup).map(([item, checked]) => (
+                  <label key={item} className="flex items-center gap-3 cursor-pointer group">
+                    <div
+                      onClick={() => setPharmacyPickup(prev => ({ ...prev, [item]: !prev[item] }))}
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                        checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300 group-hover:border-blue-400'
+                      }`}
+                    >
+                      {checked && <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <span className="text-sm text-gray-800">{item}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="flex justify-end">
+                <button onClick={handlePharmacyPickup} className={PRIMARY_BTN}>
+                  Continue <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 11: Insurance form */}
+          {step === 11 && (
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-5">
               {/* Primary */}
               <div className="space-y-3">
@@ -606,8 +653,8 @@ export default function IntakePage() {
             </div>
           )}
 
-          {/* Step 11: CTA */}
-          {step === 11 && (
+          {/* Step 12: CTA */}
+          {step === 12 && (
             <div className="flex justify-center pt-2">
               <button
                 onClick={() => router.push('/demo/dashboard')}

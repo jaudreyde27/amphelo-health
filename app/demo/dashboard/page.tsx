@@ -38,7 +38,7 @@ const PRESCRIPTIONS = [
 
 const DEVICES = [
   { name: 'Dexcom G7 Sensors (3-pack)', type: 'CGM Sensor Supply', nextRefill: 'Jun 30, 2026', daysAway: 58, status: 'on-track' as const, agentNote: null },
-  { name: 'Omnipod 5 Pods (10-pack)', type: 'Pump Supply', nextRefill: 'May 10, 2026', daysAway: 7, status: 'due-soon' as const, agentNote: 'Refill request queued' },
+  { name: 'Omnipod 5 Pods (2×5-pack)', type: 'Pump Supply', nextRefill: 'May 10, 2026', daysAway: 7, status: 'due-soon' as const, agentNote: 'Refill request queued' },
 ]
 
 const APPOINTMENTS = [
