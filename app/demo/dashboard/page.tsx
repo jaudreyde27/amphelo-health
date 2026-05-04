@@ -173,7 +173,7 @@ export default function DashboardPage() {
         {tab === 'dashboard' && <DashboardTab />}
         {tab === 'requests' && <RequestsTab />}
         {tab === 'settings' && <SettingsTab />}
-        {tab === 'pharmacy-map' && <PharmacyMapTab />}
+        {tab === 'pharmacy-map' && <PharmacyMapTab onGoToRequests={() => setTab('requests')} />}
         {tab === 'specialists' && <SpecialistFinderTab />}
       </div>
     </div>
@@ -394,7 +394,7 @@ function RecentRequestsPreview() {
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="px-4 sm:px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h3 className="font-semibold text-gray-900 text-sm">Recent Requests</h3>
-        <span className="text-xs text-gray-400">Last 3</span>
+        <span className="text-xs text-gray-400">Last Three Requests</span>
       </div>
       <div className="divide-y divide-gray-50">
         {RECENT_REQUESTS.map(r => (
@@ -667,9 +667,12 @@ const PHARMACY_LOCATIONS = [
   { name: 'CVS Pharmacy', address: '1420 Market St, San Francisco, CA 94102', phone: '(415) 842-7700', distance: '0.3 mi', hours: 'Open until 10 PM', inNetwork: true },
   { name: 'CVS Pharmacy', address: '2100 Mission St, San Francisco, CA 94110', phone: '(415) 826-5000', distance: '0.8 mi', hours: 'Open until 9 PM', inNetwork: true },
   { name: 'CVS Pharmacy', address: '3701 18th St, San Francisco, CA 94114', phone: '(415) 861-4300', distance: '1.1 mi', hours: 'Open until 10 PM', inNetwork: true },
+  { name: 'CVS Pharmacy', address: '240 Stockton St, San Francisco, CA 94108', phone: '(415) 391-4433', distance: '1.4 mi', hours: 'Open until 9 PM', inNetwork: true },
+  { name: 'CVS Pharmacy', address: '901 Clement St, San Francisco, CA 94118', phone: '(415) 750-0799', distance: '1.9 mi', hours: 'Open until 10 PM', inNetwork: true },
+  { name: 'CVS Pharmacy', address: '2535 Noriega St, San Francisco, CA 94122', phone: '(415) 665-3700', distance: '2.4 mi', hours: 'Open until 9 PM', inNetwork: true },
 ]
 
-function PharmacyMapTab() {
+function PharmacyMapTab({ onGoToRequests }: { onGoToRequests: () => void }) {
   const [zip, setZip] = useState('94102')
   const [activeZip, setActiveZip] = useState('94102')
   const [selected, setSelected] = useState<number | null>(null)
@@ -778,6 +781,18 @@ function PharmacyMapTab() {
           </div>
         </div>
       </div>
+
+      {/* Refill CTA */}
+      <button
+        onClick={onGoToRequests}
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-5 py-4 flex items-center justify-between transition-colors shadow-sm"
+      >
+        <div className="text-left">
+          <p className="text-sm font-semibold">Need a refill fast?</p>
+          <p className="text-xs text-blue-200 mt-0.5">Amphelo will call the pharmacy and handle it for you</p>
+        </div>
+        <Send className="w-4 h-4 flex-shrink-0 ml-4" />
+      </button>
     </div>
   )
 }
