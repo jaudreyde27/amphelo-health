@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Heart, User, Pill, Monitor, Building2, Shield, Phone, Send,
   CheckCircle2, AlertCircle, Calendar, Settings, Map, Stethoscope,
-  Star, MapPin, Edit2, Check, X, LayoutDashboard,
+  Star, MapPin, Edit2, Check, X, LayoutDashboard, Smile,
 } from 'lucide-react'
 
 type Tab = 'dashboard' | 'requests' | 'pharmacy-map' | 'specialists' | 'settings'
@@ -468,19 +468,33 @@ function RequestsTab() {
 
   return (
     <div className="flex flex-col flex-1 h-full max-w-3xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6" style={{ height: 'calc(100dvh - 108px)' }}>
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col flex-1 overflow-hidden">
-        <div className="px-4 sm:px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
-          <h3 className="font-semibold text-gray-900">Ad Hoc Requests</h3>
-          <span className="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full font-medium">Coordinator ready</span>
+      <div className="bg-blue-50 rounded-2xl border border-blue-100 shadow-sm flex flex-col flex-1 overflow-hidden">
+        {/* Coordinator header */}
+        <div className="px-4 sm:px-5 py-4 border-b border-blue-100 flex items-center gap-3 flex-shrink-0 bg-white rounded-t-2xl">
+          <div className="relative flex-shrink-0">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <Smile className="w-5 h-5 text-blue-600" />
+            </div>
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Amphelo Care Coordinator</p>
+            <p className="text-xs text-green-600 font-medium">Online · Ready to help</p>
+          </div>
         </div>
+
+        {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 sm:py-5 space-y-3">
           {messages.map(msg => <ChatBubble key={msg.id} msg={msg} />)}
           {isTyping && (
-            <div className="flex justify-start">
-              <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
+            <div className="flex items-end gap-2 justify-start">
+              <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Smile className="w-3.5 h-3.5 text-blue-600" />
+              </div>
+              <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm border border-blue-100">
                 <div className="flex gap-1 items-center h-4">
                   {[0, 150, 300].map(d => (
-                    <span key={d} className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                    <span key={d} className="w-2 h-2 bg-blue-300 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
                   ))}
                 </div>
               </div>
@@ -488,21 +502,23 @@ function RequestsTab() {
           )}
           <div ref={bottomRef} />
         </div>
-        <div className="px-4 sm:px-5 py-3 sm:py-4 border-t border-gray-100 flex-shrink-0">
+
+        {/* Input */}
+        <div className="px-4 sm:px-5 py-3 sm:py-4 border-t border-blue-100 flex-shrink-0 bg-white rounded-b-2xl">
           <div className="flex gap-2 sm:gap-3 items-end">
             <textarea rows={1} value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
               placeholder="Describe what's going on..."
               disabled={busy}
-              className="flex-1 border border-gray-300 rounded-xl px-3 sm:px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className="flex-1 border border-blue-200 rounded-xl px-3 sm:px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 bg-blue-50 disabled:opacity-50 placeholder-blue-300"
             />
             <button onClick={handleSubmit} disabled={!input.trim() || busy}
               className="bg-blue-600 text-white rounded-xl p-2.5 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0">
               <Send className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-2 text-center hidden sm:block">
-            Try: "my G7 sensor just failed" · "I need an insulin refill" · "reschedule my endo appointment"
+          <p className="text-xs text-blue-400 mt-2 text-center hidden sm:block">
+            Try: "my sensor just failed" · "I need an insulin refill" · "reschedule my endo appointment"
           </p>
         </div>
       </div>
@@ -517,8 +533,11 @@ function ChatBubble({ msg }: { msg: ReqMsg }) {
     </div>
   )
   if (msg.type === 'amphelo') return (
-    <div className="flex justify-start">
-      <div className="bg-gray-100 text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 text-sm max-w-xs sm:max-w-md leading-relaxed"
+    <div className="flex items-end gap-2 justify-start">
+      <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+        <Smile className="w-3.5 h-3.5 text-blue-600" />
+      </div>
+      <div className="bg-white text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 text-sm max-w-xs sm:max-w-md leading-relaxed shadow-sm border border-blue-100"
         dangerouslySetInnerHTML={{ __html: msg.content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
     </div>
   )
