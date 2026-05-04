@@ -679,39 +679,21 @@ function SettingsTab() {
 // ── Pharmacy Map tab ────────────────────────────────────────────────────────
 
 const PHARMACY_LOCATIONS = [
-  { chain: 'CVS', name: 'CVS Pharmacy', address: '1420 Market St', distance: '0.3 mi', hours: 'Open until 10 PM', inNetwork: true },
-  { chain: 'CVS', name: 'CVS Pharmacy', address: '2100 Mission St', distance: '0.8 mi', hours: 'Open until 9 PM', inNetwork: true },
-  { chain: 'CVS', name: 'CVS Pharmacy', address: '3701 18th St', distance: '1.1 mi', hours: 'Open until 10 PM', inNetwork: true },
-  { chain: 'Walgreens', name: 'Walgreens', address: '498 Castro St', distance: '0.5 mi', hours: 'Open 24 hours', inNetwork: true },
-  { chain: 'Walgreens', name: 'Walgreens', address: '1189 Potrero Ave', distance: '1.4 mi', hours: 'Open until 9 PM', inNetwork: true },
-  { chain: 'Walgreens', name: 'Walgreens', address: '3201 Divisadero St', distance: '1.7 mi', hours: 'Open until 10 PM', inNetwork: true },
+  { name: 'CVS Pharmacy', address: '1420 Market St', distance: '0.3 mi', hours: 'Open until 10 PM', inNetwork: true },
+  { name: 'CVS Pharmacy', address: '2100 Mission St', distance: '0.8 mi', hours: 'Open until 9 PM', inNetwork: true },
+  { name: 'CVS Pharmacy', address: '3701 18th St', distance: '1.1 mi', hours: 'Open until 10 PM', inNetwork: true },
 ]
 
 function PharmacyMapTab() {
-  const [chain, setChain] = useState<'CVS' | 'Walgreens' | 'All'>('All')
-  const filtered = chain === 'All' ? PHARMACY_LOCATIONS : PHARMACY_LOCATIONS.filter(p => p.chain === chain)
-
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Pharmacy Map</h2>
-          <p className="text-sm text-gray-500 mt-0.5">In-network pharmacies near San Francisco, CA</p>
-        </div>
-        <div className="flex gap-2">
-          {(['All', 'CVS', 'Walgreens'] as const).map(c => (
-            <button key={c} onClick={() => setChain(c)}
-              className={`text-sm px-4 py-1.5 rounded-full border transition-colors ${
-                chain === c ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
-              }`}>
-              {c}
-            </button>
-          ))}
-        </div>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Pharmacy Map</h2>
+        <p className="text-sm text-gray-500 mt-0.5">CVS Pharmacy locations near San Francisco, CA</p>
       </div>
 
       <div className="grid grid-cols-5 gap-4 h-[480px]">
-        {/* Map placeholder */}
+        {/* Map */}
         <div className="col-span-3 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden relative">
           <iframe
             title="pharmacy-map"
@@ -719,21 +701,17 @@ function PharmacyMapTab() {
             height="100%"
             style={{ border: 0 }}
             loading="lazy"
-            src={`https://maps.google.com/maps?q=${
-              chain === 'All' ? 'pharmacy' :
-              chain === 'CVS' ? 'CVS+Pharmacy' :
-              'Walgreens+Pharmacy'
-            }+San+Francisco+CA&output=embed`}
+            src="https://maps.google.com/maps?q=CVS+Pharmacy+San+Francisco+CA&output=embed"
           />
         </div>
 
         {/* Pharmacy list */}
         <div className="col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto">
           <div className="px-4 py-3 border-b border-gray-100">
-            <p className="text-sm font-semibold text-gray-900">{filtered.length} locations found</p>
+            <p className="text-sm font-semibold text-gray-900">{PHARMACY_LOCATIONS.length} locations found</p>
           </div>
           <div className="divide-y divide-gray-50">
-            {filtered.map((p, i) => (
+            {PHARMACY_LOCATIONS.map((p, i) => (
               <div key={i} className="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer">
                 <div className="flex items-start justify-between gap-2">
                   <div>
