@@ -16,10 +16,9 @@ export default function Home() {
           muted
           loop
           playsInline
-          poster="/images/hero-family.jpg"
           className="absolute inset-0 w-full h-full object-cover"
         >
-          <source src="/videos/hero.mp4" type="video/mp4" />
+          <source src="/videos/hero-new.mp4" type="video/mp4" />
         </video>
 
         {/* Gradient overlay for text readability */}
@@ -29,7 +28,7 @@ export default function Home() {
         <div className="relative z-10 max-w-6xl mx-auto px-4 md:px-6 pt-28 pb-16 md:pt-40 md:pb-28 w-full">
           <div className="max-w-2xl">
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight text-white mb-6 md:mb-8 drop-shadow-md">
-              You deserve better, more informed Type One Diabetes care.
+              You deserve better, more informed<br />Type One Diabetes care.
             </h1>
             <p className="text-xl sm:text-2xl text-sky-300 font-semibold drop-shadow">
               Coming soon.
