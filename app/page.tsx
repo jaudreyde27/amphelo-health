@@ -25,15 +25,13 @@ export default function Home() {
         <div className="absolute inset-0" style={{background: 'linear-gradient(to right, rgba(10,30,60,0.72) 0%, rgba(10,30,60,0.45) 60%, rgba(10,30,60,0.15) 100%)'}} />
 
         {/* Text content */}
-        <div className="relative z-10 max-w-6xl mx-auto px-4 md:px-6 pt-28 pb-16 md:pt-40 md:pb-28 w-full">
-          <div className="max-w-2xl">
+        <div className="relative z-10 max-w-6xl mx-auto px-4 md:px-6 pt-28 pb-16 md:pt-40 md:pb-28 w-full flex flex-col items-center text-center">
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight text-white mb-6 md:mb-8 drop-shadow-md">
               You deserve better, more informed<br />Type One Diabetes care.
             </h1>
             <p className="text-xl sm:text-2xl text-sky-300 font-semibold drop-shadow">
               Coming soon.
             </p>
-          </div>
         </div>
       </section>
     </div>
